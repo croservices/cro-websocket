@@ -70,4 +70,22 @@ test-example Buf.new([0x8a, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51
              *.opcode == Cro::WebSocket::Frame::Pong,
              *.payload.decode eq 'Hello';
 
+my @random-data = 255.rand.Int xx 256;
+my $message = Buf.new([0x82, 0x7E, 0x01, 0x00, |@random-data]);
+
+test-example $message,
+             False, '256 bytes binary message in a single unmasked frame',
+             *.fin == True,
+             *.opcode == Cro::WebSocket::Frame::Binary,
+             *.payload == @random-data;
+
+@random-data = 255.rand.Int xx 65536;
+$message = Buf.new([0x82, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, |@random-data]);
+
+test-example $message,
+             False, '64 KiB binary message in a single unmasked frame',
+             *.fin == True,
+             *.opcode == Cro::WebSocket::Frame::Binary;
+
+
 done-testing;

@@ -16,100 +16,68 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
 
     method transformer(Supply:D $in) {
         supply {
-            my enum Expecting <Fin Reserve Op MaskBit Length MaskKey Payload>;
+            my enum Expecting <FinOp MaskLength MaskKey Payload>;
 
-            my Expecting $expecting = Fin;
+            my Expecting $expecting = FinOp;
             my Bool $mask-flag;
-            my Int @mask;
+            my Buf $mask;
             my $frame = Cro::WebSocket::Frame.new;
-            my Int @trail;
-            my Int @buffer;
+            my Buf @buffer;
             my Int $length;
 
-            sub extract(@data, $size, &command, $expect --> Bool) {
-                if @data.elems + @buffer.elems < $size {
-                    @buffer.append: @data; False;
-                } else {
-                    @data.prepend: @buffer;
-                    @buffer = ();
-                    &command(@data);
-                    # eat up taken bits
-                    @data = @data[$size..*];
-                    $expecting = $expect;
-                    True;
-                }
-            }
-
             whenever $in -> Cro::TCP::Message $packet {
-                sub extend(@bits) {
-                    if @bits.elems != 8 {
-                        my @prefix = 0 xx (8 - @bits.elems);
-                        @prefix.append: @bits;
-                    } else {
-                        @bits;
-                    }
-                }
-                my Int @data = $packet.data.map({ extend($_.base(2).comb) }).flat.map({.Int});
+                my Buf $data = $packet.data;
                 loop {
                     $_ = $expecting;
-                    when Fin {
-                        # We cannot get less than 1 bit here
-                        $frame.fin = @data[0] == 1 ?? True !! False;
-                        @data = @data[1..*];
-                        $expecting = Reserve;
+                    when FinOp {
+                        $frame.fin = self!check-first-bit($data[0]); # Check first bit.
+                        $frame.opcode = Cro::WebSocket::Frame::Opcode($data[0] +& 15); # Last 4 bits.
+                        $data .= subbuf(1);
+                        $expecting = MaskLength;
                         next;
                     }
-                    when Reserve {
-                        # Three bits
-                        last unless extract(@data, 3, -> @_ {}, Op); next;
-                    }
-                    when Op {
-                        # Four bits
-                        my &comm = -> @_ { $frame.opcode = Cro::WebSocket::Frame::Opcode("0b{@_[0..3].Str.subst(' ', '', :g)}".Int) };
-                        last unless extract(@data, 4, &comm, MaskBit); next;
-                    }
-                    when MaskBit {
-                        $mask-flag = @data[0] == 1 ?? True !! False;
+                    when MaskLength {
+                        $mask-flag = self!check-first-bit($data[0]);
                         die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-required !== $mask-flag;
-                        @data = @data[1..*];
-                        $expecting = Length; next;
-                    }
-                    when Length {
-                        # 7 | 7+16 | 7+64 bits
-                        my &comm = -> @_ {
-                            my $baselen = "0b{@_[0..6].Str.subst(' ', '', :g)}".Int;
-                            if $baselen < 126 {
-                                $length = $baselen; $expecting = MaskKey;
-                            } elsif $baselen < 127 {
-                                my &comm = -> @_ { $length = "0b{@_[0..15].Str.subst(' ', '', :g)}".Int };
-                                last unless extract(@data, 16, &comm, MaskKey);
-                            } else {
-                                my &comm = -> @_ { $length = "0b{@_[0..63].Str.subst(' ', '', :g)}".Int };
-                                last unless extract(@data, 64, &comm, MaskKey);
-                            }
-                        };
-                        last unless extract(@data, 7, &comm, MaskKey); next;
+                        my $baselen = $data[0] +& 127;
+                        # Drop baselen byte;
+                        $data .= subbuf(1);
+                        if $baselen < 126 {
+                            $length = $baselen;
+                        } elsif $baselen < 127 {
+                            die 'Length cannot be negative' if self!check-first-bit($data[0]);
+                            $length = ($data[0] +< 8) +| $data[1];
+                            $data .= subbuf(2);
+                        } else {
+                            die 'Length cannot be negative' if self!check-first-bit($data[0]);
+                            $length = 0;
+                            loop (my $i = 0; $i < 8; $i++) {
+                                $length = $length +< 8 +| $data[$i];
+                            };
+                            $data .= subbuf(8);
+                        }
+                        $expecting = MaskKey; next;
                     }
                     when MaskKey {
-                        unless $mask-flag { $expecting = Payload; next };
-                        my &comm = -> @_ { @mask = @_[0..31] };
-                        last unless extract(@data, 32, &comm, Payload); next;
+                        if $mask-flag {
+                            $mask = $data.subbuf(0,4);
+                            $data .= subbuf(4);
+                        }
+                        $expecting = Payload;
+                        next;
                     }
                     when Payload {
                         if $length == 0 {
                             emit $frame;
                         } else {
                             # In case something is buffered;
-                            @data.prepend: @buffer;
-                            if @data.elems == $length * 8 {
-                                my $payload = $mask-flag ?? (@data Z+^ (@mask xx *).flat).Array !! @data;
-                                $frame.payload = Blob.new(self!to-bytes($payload));
+                            $data.prepend: @buffer;
+                            if $data.elems == $length {
+                                my $payload = $mask-flag ?? (@$data Z+^ (@$mask xx *).flat).Array !! $data;
+                                $frame.payload = Blob.new: $payload;
                                 emit $frame;
                             } else {
-                                my Int $entire = @data.elems div 8;
-                                for $entire {
-                                    @buffer.append: @data;
-                                }
+                                @buffer.append: $data;
                             }
                         }
                     }
@@ -118,13 +86,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
         }
     }
 
-    method !to-bytes(@data) {
-        my @result;
-        my $counter = @data.elems div 8;
-        for 1..$counter {
-            @result.append: "0b{@data[0..7].Str.subst(' ', '', :g)}".Int;
-            @data = @data[8..*];
-        }
-        @result;
+    method !check-first-bit(Int $byte --> Bool) {
+        $byte +& (1 +< 7) != 0
     }
 }
