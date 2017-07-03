@@ -1,3 +1,4 @@
+use Cro::TCP;
 use Cro::WebSocket::Frame;
 use Cro::Transform;
 
@@ -26,12 +27,12 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
             my Int $length;
 
             sub extract(@data, $size, &command, $expect --> Buf) {
-                if @data.elems + @buffer.elems < $side {
+                if @data.elems + @buffer.elems < $size {
                     @buffer.append: @data; False;
                 } else {
                     @data.prepend: @buffer;
                     @buffer = ();
-                    $command(@data);
+                    &command(@data);
                     # eat up taken bits
                     @data = @data[$size-1..*];
                     $expecting = $expect;
@@ -46,7 +47,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     when Fin {
                         # We cannot get less than 1 bit here
                         $frame.fin = @data[0];
-                        @data = @data[1..];
+                        @data = @data[1..*];
                         $expecting = Reserve;
                     }
                     when Reserve {
@@ -55,34 +56,34 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     }
                     when Op {
                         # Four bits
-                        my &comm = { $frame.opcode = "0b{@_[0..3].Str.subst(' ', '', :g)}".Int };
+                        my &comm = -> @_ { $frame.opcode = "0b{@_[0..3].Str.subst(' ', '', :g)}".Int };
                         last unless extract(@data, 4, &comm, MaskBit);
                     }
                     when MaskBit {
                         $mask-flag = @data[0] == 1 ?? True !! False;
-                        die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-flag !== $mask-flag;
-                        @data = @data[1..];
+                        die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-required !== $mask-flag;
+                        @data = @data[1..*];
                         $expecting = Length;
                     }
                     when Length {
                         # 7 | 7+16 | 7+64 bits
-                        my &comm = {
+                        my &comm = -> @_ {
                             my $baselen = "0b{@_[0..6].Str.subst(' ', '', :g)}".Int;
                             if $baselen < 126 {
                                 $length = $baselen; $expecting = MaskKey; last;
                             } elsif $baselen < 127 {
-                                my &comm = { $length = "0b{@_[0..15].Str.subst(' ', '', :g)}".Int };
+                                my &comm = -> @_ { $length = "0b{@_[0..15].Str.subst(' ', '', :g)}".Int };
                                 last unless extract(@data, 16, &comm, MaskKey);
                             } else {
-                                my &comm = { $length = "0b{@_[0..63].Str.subst(' ', '', :g)}".Int };
+                                my &comm = -> @_ { $length = "0b{@_[0..63].Str.subst(' ', '', :g)}".Int };
                                 last unless extract(@data, 64, &comm, MaskKey);
                             }
                         };
                         last unless extract(@data, 7, &comm, MaskKey);
                     }
                     when MaskKey {
-                        unless $mask-flag { $expected = Payload; next };
-                        my &comm = { @mask = @_[0..31] };
+                        unless $mask-flag { $expecting = Payload; next };
+                        my &comm = -> @_ { @mask = @_[0..31] };
                         last unless extract(@data, 32, &comm, Payload);
                     }
                     when Payload {
@@ -90,7 +91,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                             emit $frame;
                         } else {
                             if @buffer.elems == $length {
-                                my $payload = $mask-flag ?? @data Z+^ (@mask xx *).flat !! @buffer;
+                                my $payload = $mask-flag ?? (@data Z+^ (@mask xx *).flat) !! @buffer;
                                 $frame.payload = Blob.new(@buffer);
                                 emit $frame;
                             } else {
