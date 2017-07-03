@@ -26,7 +26,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
             my Int @buffer;
             my Int $length;
 
-            sub extract(@data, $size, &command, $expect --> Buf) {
+            sub extract(@data, $size, &command, $expect --> Bool) {
                 if @data.elems + @buffer.elems < $size {
                     @buffer.append: @data; False;
                 } else {
@@ -34,43 +34,52 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     @buffer = ();
                     &command(@data);
                     # eat up taken bits
-                    @data = @data[$size-1..*];
+                    @data = @data[$size..*];
                     $expecting = $expect;
                     True;
                 }
             }
 
             whenever $in -> Cro::TCP::Message $packet {
-                my Blob @data = $packet.data.map({ .base(2).comb }).flat;
+                sub extend(@bits) {
+                    if @bits.elems != 8 {
+                        my @prefix = 0 xx (8 - @bits.elems);
+                        @prefix.append: @bits;
+                    } else {
+                        @bits;
+                    }
+                }
+                my Int @data = $packet.data.map({ extend($_.base(2).comb) }).flat.map({.Int});
                 loop {
                     $_ = $expecting;
                     when Fin {
                         # We cannot get less than 1 bit here
-                        $frame.fin = @data[0];
+                        $frame.fin = @data[0] == 1 ?? True !! False;
                         @data = @data[1..*];
                         $expecting = Reserve;
+                        next;
                     }
                     when Reserve {
                         # Three bits
-                        last unless extract(@data, 3, {}, Op);
+                        last unless extract(@data, 3, -> @_ {}, Op); next;
                     }
                     when Op {
                         # Four bits
-                        my &comm = -> @_ { $frame.opcode = "0b{@_[0..3].Str.subst(' ', '', :g)}".Int };
-                        last unless extract(@data, 4, &comm, MaskBit);
+                        my &comm = -> @_ { $frame.opcode = Cro::WebSocket::Frame::Opcode("0b{@_[0..3].Str.subst(' ', '', :g)}".Int) };
+                        last unless extract(@data, 4, &comm, MaskBit); next;
                     }
                     when MaskBit {
                         $mask-flag = @data[0] == 1 ?? True !! False;
                         die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-required !== $mask-flag;
                         @data = @data[1..*];
-                        $expecting = Length;
+                        $expecting = Length; next;
                     }
                     when Length {
                         # 7 | 7+16 | 7+64 bits
                         my &comm = -> @_ {
                             my $baselen = "0b{@_[0..6].Str.subst(' ', '', :g)}".Int;
                             if $baselen < 126 {
-                                $length = $baselen; $expecting = MaskKey; last;
+                                $length = $baselen; $expecting = MaskKey;
                             } elsif $baselen < 127 {
                                 my &comm = -> @_ { $length = "0b{@_[0..15].Str.subst(' ', '', :g)}".Int };
                                 last unless extract(@data, 16, &comm, MaskKey);
@@ -79,30 +88,28 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                                 last unless extract(@data, 64, &comm, MaskKey);
                             }
                         };
-                        last unless extract(@data, 7, &comm, MaskKey);
+                        last unless extract(@data, 7, &comm, MaskKey); next;
                     }
                     when MaskKey {
                         unless $mask-flag { $expecting = Payload; next };
                         my &comm = -> @_ { @mask = @_[0..31] };
-                        last unless extract(@data, 32, &comm, Payload);
+                        last unless extract(@data, 32, &comm, Payload); next;
                     }
                     when Payload {
                         if $length == 0 {
                             emit $frame;
                         } else {
-                            if @buffer.elems == $length {
-                                my $payload = $mask-flag ?? (@data Z+^ (@mask xx *).flat) !! @buffer;
-                                $frame.payload = Blob.new(@buffer);
+                            # In case something is buffered;
+                            @data.prepend: @buffer;
+                            if @data.elems == $length * 8 {
+                                my $payload = $mask-flag ?? (@data Z+^ (@mask xx *).flat).Array !! @data;
+                                $frame.payload = Blob.new(self!to-bytes($payload));
                                 emit $frame;
                             } else {
-                                @data.prepend: @trail;
                                 my Int $entire = @data.elems div 8;
                                 for $entire {
-                                    # very inefficient
-                                    @buffer.append(self!take-byte(@data));
+                                    @buffer.append: @data;
                                 }
-                                # Gather trailing bits
-                                @trail = @data;
                             }
                         }
                     }
@@ -111,8 +118,13 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
         }
     }
 
-    method !take-byte(@data, @buffer) {
-        @buffer.append: "0b{@data[0..7].Str.subst(' ', '', :g)}".Int;
-         @data = @data[7..*];
+    method !to-bytes(@data) {
+        my @result;
+        my $counter = @data.elems div 8;
+        for 1..$counter {
+            @result.append: "0b{@data[0..7].Str.subst(' ', '', :g)}".Int;
+            @data = @data[8..*];
+        }
+        @result;
     }
 }
