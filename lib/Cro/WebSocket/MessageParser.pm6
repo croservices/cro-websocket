@@ -12,7 +12,7 @@ class Cro::WebSocket::MessageParser does Cro::Transform {
             whenever $in -> Cro::WebSocket::Frame $frame {
                 # Control frames are processed immediately
                 if $frame.opcode.value == 8|9|10 {
-                    emit Cro::WebSocket::Message.new(opcode => $frame.opcode,
+                    emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode.value),
                                                      fragmented => False,
                                                      body-byte-stream => supply { emit $frame.payload });
                 } else {
@@ -31,6 +31,7 @@ class Cro::WebSocket::MessageParser does Cro::Transform {
                             $last.emit($frame.payload);
                         } else {
                             $last = Supplier::Preserving.new;
+                            $last.emit($frame.payload);
                             emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode.value),
                                                              fragmented => True,
                                                              body-byte-stream => $last.Supply);
