@@ -52,12 +52,6 @@ test-example Buf.new([0x80, 0x02, 0x6c, 0x6f]),
              *.opcode == Cro::WebSocket::Frame::Continuation,
              *.payload.decode eq 'lo';
 
-test-example Buf.new([0x80, 0x02, 0x6c, 0x6f]),
-             False, 'lo',
-             *.fin == True,
-             *.opcode == Cro::WebSocket::Frame::Continuation,
-             *.payload.decode eq 'lo';
-
 test-example Buf.new([0x89, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f]),
              False, 'Unmasked ping request',
              *.fin == True,
