@@ -31,9 +31,9 @@ class Cro::WebSocket::MessageParser does Cro::Transform {
                             $last.emit($frame.payload);
                         } else {
                             $last = Supplier::Preserving.new;
-                            emit Cro::WebSocket::Message(opcode => $frame.opcode,
-                                                         fragmented => True,
-                                                         body-byte-stream => $last.Supply);
+                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode.value),
+                                                             fragmented => True,
+                                                             body-byte-stream => $last.Supply);
                         }
                     }
                 }

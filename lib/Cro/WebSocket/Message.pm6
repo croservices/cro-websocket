@@ -1,7 +1,7 @@
 use Cro::Message;
 
 class Cro::WebSocket::Message does Cro::Message {
-    enum Opcode <Text Binary Ping Pong Close>;
+    enum Opcode (:Text(1), :Binary(2), :Ping(9), :Pong(10), :Close(8));
     has Opcode $.opcode;
 
     has Bool $.fragmented;
