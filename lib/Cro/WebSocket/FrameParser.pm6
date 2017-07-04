@@ -16,13 +16,13 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
 
     method transformer(Supply:D $in) {
         supply {
-            my enum Expecting <FinOp MaskLength MaskKey Payload>;
+            my enum Expecting <FinOp MaskLength Length2 Length3 MaskKey Payload>;
 
             my Expecting $expecting = FinOp;
             my Bool $mask-flag;
             my Buf $mask;
             my $frame = Cro::WebSocket::Frame.new;
-            my Buf @buffer;
+            my Buf $buffer = Buf.new;
             my Int $length;
 
             whenever $in -> Cro::TCP::Message $packet {
@@ -37,6 +37,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         next;
                     }
                     when MaskLength {
+                        last if $data.elems < 1;
                         $mask-flag = self!check-first-bit($data[0]);
                         die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-required !== $mask-flag;
                         my $baselen = $data[0] +& 127;
@@ -44,10 +45,28 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         $data .= subbuf(1);
                         if $baselen < 126 {
                             $length = $baselen;
+                            $expecting = MaskKey; next;
                         } elsif $baselen < 127 {
+                            $expecting = Length2; next;
+                        } else {
+                            $expecting = Length3; next;
+                        }
+                    }
+                    when Length2 {
+                        $data.prepend: $buffer; $buffer = Buf.new;
+                        if $data.elems < 2 {
+                            $buffer.append: $data; last;
+                        } else {
                             die 'Length cannot be negative' if self!check-first-bit($data[0]);
                             $length = ($data[0] +< 8) +| $data[1];
                             $data .= subbuf(2);
+                            $expecting = MaskKey; next;
+                        }
+                    }
+                    when Length3 {
+                        $data.prepend: $buffer; $buffer = Buf.new;
+                        if $data.elems < 8 {
+                            $buffer.append: $data; last;
                         } else {
                             die 'Length cannot be negative' if self!check-first-bit($data[0]);
                             $length = 0;
@@ -55,11 +74,15 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                                 $length = $length +< 8 +| $data[$i];
                             };
                             $data .= subbuf(8);
+                            $expecting = MaskKey; next;
                         }
-                        $expecting = MaskKey; next;
                     }
                     when MaskKey {
                         if $mask-flag {
+                            $data.prepend: $buffer; $buffer = Buf.new;
+                            if $data.elems < 4 {
+                                $buffer.append: $data; last;
+                            }
                             $mask = $data.subbuf(0,4);
                             $data .= subbuf(4);
                         }
@@ -69,15 +92,17 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     when Payload {
                         if $length == 0 {
                             emit $frame;
+                            $expecting = FinOp;
                         } else {
                             # In case something is buffered;
-                            $data.prepend: @buffer;
+                            $data.prepend: $buffer; $buffer = Buf.new;
                             if $data.elems == $length {
                                 my $payload = $mask-flag ?? (@$data Z+^ (@$mask xx *).flat).Array !! $data;
                                 $frame.payload = Blob.new: $payload;
                                 emit $frame;
+                                $expecting = FinOp; last;
                             } else {
-                                @buffer.append: $data;
+                                $buffer.append: $data;
                             }
                         }
                     }
