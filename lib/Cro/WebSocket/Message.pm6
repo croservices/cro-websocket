@@ -26,17 +26,17 @@ class Cro::WebSocket::Message does Cro::Message {
     method is-binary() { $!opcode == Binary }
     method is-data() { $!opcode == Text | Binary }
 
-    # Gets the body as text, asynchronously (decoding it as UTF-8)
     method body-text(--> Promise) {
-        my $p = Promise.new;
-        $!body-byte-stream.tap(-> $body { $p.keep($body.decode('utf-8')) });
-        $p;
+        self.body-blob.then: -> $p { $p.result.decode('utf-8') }
     }
 
-    # Gets the body as a Blob, asynchronously
     method body-blob(--> Promise) {
-        my $p = Promise.new;
-        $!body-byte-stream.tap(-> $body { $p.keep($body) });
-        $p;
+        Promise(supply {
+                       my $joined = Buf.new;
+                       whenever self.body-byte-stream -> $blob {
+                           $joined.append($blob);
+                           LAST emit $joined;
+                       }
+                   })
     }
 }
