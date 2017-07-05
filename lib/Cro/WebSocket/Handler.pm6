@@ -21,28 +21,32 @@ class Cro::WebSocket::Handler does Cro::Transform {
                         ?? $!block($supplier.Supply)
                         !! $!block($supplier.Supply, $promise);
 
-            whenever $block -> $resp {
-                when $resp ~~ Cro::WebSocket::Message {
+            whenever $block {
+                when Cro::WebSocket::Message {
                     emit $resp;
                     if $resp.opcode == Cro::WebSocket::Message::Close {
                         $end = True;
-                        $supplier.done;
+                        done;
                     }
                 }
-                when $resp ~~ Blob|Str|Supply { emit Cro::WebSocket::Message.new($resp) }
+                when Blob|Str|Supply { emit Cro::WebSocket::Message.new($resp) }
 
                 LAST {
-                    emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                     fragmented => False,
-                                                     body-byte-stream => supply   # 1000
-                                                                      { emit Blob.new(3, 232) }) unless $end;
+                    unless $end {
+                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
+                                                         fragmented => False,
+                                                         body-byte-stream => supply   # 1000
+                                                                          { emit Blob.new(3, 232) });
+                    }
                     done;
                 }
                 QUIT {
-                    emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                     fragmented => False,
-                                                     body-byte-stream => supply   # 1011
-                                                                      { emit Blob.new(3, 243) }) unless $end;
+                    unless $end {
+                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
+                                                         fragmented => False,
+                                                         body-byte-stream => supply   # 1011
+                                                                          { emit Blob.new(3, 243) });
+                    }
                     done;
                 }
             }
