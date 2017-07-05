@@ -6,12 +6,11 @@ sub message-to-frames($message, $count, $desc, *@checks) {
     my $fake-in = Supplier.new;
     my $completion = Promise.new;
     my Int $frame-count = 0;
-    $serializer.transformer($fake-in.Supply).schedule-on($*SCHEDULER).tap: -> $frame {
-        say $frame;
-        $frame-count++;
+    $serializer.transformer($fake-in.Supply).tap: -> $frame {
         for @checks[$frame-count].kv -> $i, $check {
             ok $check($frame), "check {$i+1}";
         }
+        $frame-count++;
         $completion.keep if $count == $frame-count;
     }
     start { $fake-in.emit: $message; };
@@ -31,7 +30,7 @@ message-to-frames Cro::WebSocket::Message.new('Hello'),
 
 message-to-frames Cro::WebSocket::Message.new(supply {
                                                      emit 'Hel'.encode;
-                                                     emit 'Lo'.encode;
+                                                     emit 'lo'.encode;
                                                      done;
                                                  }),
                   3, 'Splitted hello',
