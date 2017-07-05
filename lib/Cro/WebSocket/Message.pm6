@@ -33,7 +33,7 @@ class Cro::WebSocket::Message does Cro::Message {
     method body-blob(--> Promise) {
         Promise(supply {
                        my $joined = Buf.new;
-                       whenever self.body-byte-stream -> $blob {
+                       whenever self.body-byte-stream -> Blob $blob {
                            $joined.append($blob);
                            LAST emit $joined;
                        }
