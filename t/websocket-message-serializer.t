@@ -13,7 +13,7 @@ sub message-to-frames(@messages, $count, $desc, *@checks) {
         $frame-count++;
         $completion.keep if $count == $frame-count;
     }
-    start {
+    await start {
         for @messages { $fake-in.emit($_) };
         $fake-in.done;
     };
