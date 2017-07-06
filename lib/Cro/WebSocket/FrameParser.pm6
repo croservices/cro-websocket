@@ -26,7 +26,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
             my Int $length;
 
             whenever $in -> Cro::TCP::Message $packet {
-                my Buf $data = $packet.data;
+                my Blob $data = $packet.data;
                 loop {
                     $_ = $expecting;
                     when FinOp {
