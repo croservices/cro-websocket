@@ -2,6 +2,7 @@ use Base64;
 use Digest::SHA1::Native;
 use Cro::HTTP::Router;
 use Cro::Transform;
+use Cro::TCP;
 use Cro::WebSocket::FrameParser;
 use Cro::WebSocket::Handler;
 use Cro::WebSocket::FrameSerializer;
@@ -41,5 +42,8 @@ sub web-socket(&handler) is export {
                             Cro::WebSocket::Handler.new(&handler),
                             Cro::WebSocket::MessageSerializer.new,
                             Cro::WebSocket::FrameSerializer.new(mask => False));
-    $response.set-body-byte-stream($pipeline.transformer($request.body-byte-stream));
+    $response.set-body-byte-stream:
+        $pipeline.transformer(
+            $request.body-byte-stream.map(-> $data { Cro::TCP::Message.new(:$data) })
+        ).map(*.data);
 }
