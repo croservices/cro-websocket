@@ -2,34 +2,34 @@ use Cro::Transform;
 use Cro::WebSocket::Message;
 
 class Cro::WebSocket::Handler does Cro::Transform {
-    has $.block;
+    has &.block;
 
     method consumes() { Cro::WebSocket::Message }
     method produces() { Cro::WebSocket::Message }
 
-    method new($block) {
-        return self.bless(:$block);
+    method new(&block) {
+        return self.bless(:&block);
     }
 
     method transformer(Supply:D $in) {
         supply {
             my $supplier = Supplier::Preserving.new;
-            my $promise = Promise.new if $!block.count == 2;
+            my $promise = Promise.new if &!block.count == 2;
             my $end = False;
 
-            my $block = $!block.count == 1
-                        ?? $!block($supplier.Supply)
-                        !! $!block($supplier.Supply, $promise);
+            my $block = &!block.count == 1
+                        ?? &!block($supplier.Supply)
+                        !! &!block($supplier.Supply, $promise);
 
             whenever $block {
                 when Cro::WebSocket::Message {
-                    emit $resp;
-                    if $resp.opcode == Cro::WebSocket::Message::Close {
+                    emit $_;
+                    if $_.opcode == Cro::WebSocket::Message::Close {
                         $end = True;
                         done;
                     }
                 }
-                when Blob|Str|Supply { emit Cro::WebSocket::Message.new($resp) }
+                when Blob|Str|Supply { emit Cro::WebSocket::Message.new($_) }
 
                 LAST {
                     unless $end {

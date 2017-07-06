@@ -23,8 +23,10 @@ my $completion = Promise.new;
 my Int $counter = 0;
 
 $uc-ws.transformer($fake-in.Supply).tap: -> $resp {
-    my $text = $resp.body-text.result;
-    ok $text eq $text.uc;
+    my $text = $resp.body-text.result if $resp.opcode != Cro::WebSocket::Message::Close;
+    with $text {
+        ok $text eq $text.uc;
+    }
     $counter++;
     $completion.keep if $count == $counter;
 };
