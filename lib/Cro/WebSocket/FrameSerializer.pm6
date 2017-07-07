@@ -1,6 +1,7 @@
 use Cro::TCP;
 use Cro::WebSocket::Frame;
 use Cro::Transform;
+use Crypt::Random;
 
 class Cro::WebSocket::FrameSerializer does Cro::Transform {
     has Bool $.mask;
@@ -37,7 +38,7 @@ class Cro::WebSocket::FrameSerializer does Cro::Transform {
 
                 # Mask
                 if $!mask {
-                    my @mask = (2**8).rand.Int xx 4;
+                    my @mask =  crypt_random_buf(4);
                     for @mask -> $byte {
                         $message[$i] = $byte; $i++;
                     }
