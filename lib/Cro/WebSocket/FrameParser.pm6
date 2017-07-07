@@ -28,6 +28,8 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
             whenever $in -> Cro::TCP::Message $packet {
                 my Blob $data = $packet.data;
                 loop {
+                    last if $data eq Blob.new && $expecting !== Payload;
+
                     $_ = $expecting;
                     when FinOp {
                         $frame.fin = self!check-first-bit($data[0]); # Check first bit.
