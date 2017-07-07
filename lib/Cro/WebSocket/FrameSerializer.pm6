@@ -38,11 +38,11 @@ class Cro::WebSocket::FrameSerializer does Cro::Transform {
 
                 # Mask
                 if $!mask {
-                    my @mask =  crypt_random_buf(4);
-                    for @mask -> $byte {
+                    my $mask-buf = crypt_random_buf(4);
+                    for @$mask-buf -> $byte {
                         $message[$i] = $byte; $i++;
                     }
-                    my $payload = (@($frame.payload) Z+^ ((@mask xx *).flat)).Array;
+                    my $payload = (@($frame.payload) Z+^ ((@$mask-buf xx *).flat)).Array;
                     emit Cro::TCP::Message.new(data => $message.append: $payload);
                 } else {
                     emit Cro::TCP::Message.new(data => $message.append: $frame.payload);
