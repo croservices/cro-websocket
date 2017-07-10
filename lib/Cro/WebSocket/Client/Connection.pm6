@@ -50,9 +50,6 @@ class Cro::WebSocket::Client::Connection {
                            $out.emit: $_.data;
                        });
 
-        CATCH {
-            note $_;
-        }
         self.bless(:$in, :$out, :$sender, receiver => $receiver.Supply, :$closer);
     }
 
@@ -62,9 +59,6 @@ class Cro::WebSocket::Client::Connection {
 
     multi method send(Cro::WebSocket::Message $m) {
         $!sender.emit($m);
-        CATCH {
-            note $_;
-        }
     }
     multi method send($m) {
         die 'Expecting message-like type, $m was sent' unless $m ~~ Str|Blob|Supply;
