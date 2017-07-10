@@ -33,22 +33,23 @@ class Cro::WebSocket::Client {
                 Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
 
             %options<body-byte-stream> = $out.Supply;
-            my $resp = await Cro::HTTP::Client.get($full-uri, %options);
+            Cro::HTTP::Client.get($full-uri, %options).tap(
+                -> $resp {
+                    if $resp.status == 101 {
+                        # Headers check;
+                        die unless $resp.header('upgrade') eq 'websocket';
+                        die unless $resp.header('connection') eq 'Upgrade';
+                        die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
+                        # No extensions for now
+                        # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
+                        # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
 
-            if $resp.status == 101 {
-                # Headers check;
+                        $p.keep(Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out));
+                    } else {
+                        $p.break;
+                    }
+                });
 
-                die unless $resp.header('upgrade') eq 'websocket';
-                die unless $resp.header('connection') eq 'Upgrade';
-                die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
-                # No extensions for now
-                # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
-                # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
-
-                $p.keep(Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out));
-            } else {
-                $p.break;
-            }
             CATCH {
                 $p.break;
             }
