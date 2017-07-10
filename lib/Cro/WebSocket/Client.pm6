@@ -53,6 +53,9 @@ class Cro::WebSocket::Client {
             CATCH {
                 $p.break;
             }
+            QUIT {
+                $p.break;
+            }
         }
         $p;
     }
