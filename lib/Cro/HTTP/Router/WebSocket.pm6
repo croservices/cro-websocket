@@ -45,5 +45,5 @@ sub web-socket(&handler) is export {
     $response.set-body-byte-stream:
         $pipeline.transformer(
             $request.body-byte-stream.map(-> $data { Cro::TCP::Message.new(:$data) })
-        ).map(*.data);
+        ).map({ note $_.data; $_.data}); # XXX Remove debug note
 }
