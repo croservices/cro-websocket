@@ -1,4 +1,3 @@
-use Cro::HTTP::Client;
 use Cro::WebSocket::Client;
 use Test;
 
