@@ -59,9 +59,18 @@ class Cro::WebSocket::Handler does Cro::Transform {
                         when Cro::WebSocket::Message::Ping {
                             emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Pong,
                                                              fragmented => False,
-                                                             body-byte-stream => await($m.body-blob));
+                                                             body-byte-stream => supply {
+                                                                    emit (await $m.body-blob);
+                                                                    done;
+                                                                });
                         }
                         when Cro::WebSocket::Message::Close {
+                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
+                                                             fragmented => False,
+                                                             body-byte-stream => supply {
+                                                                    emit (await $m.body-blob);
+                                                                    done;
+                                                                });
                             with $promise { .keep($m) }
                             $supplier.done;
                         }
