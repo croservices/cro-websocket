@@ -25,6 +25,7 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 when Cro::WebSocket::Message {
                     emit $_;
                     if $_.opcode == Cro::WebSocket::Message::Close {
+                        $promise.keep if $promise;
                         $end = True;
                         done;
                     }
@@ -37,8 +38,9 @@ class Cro::WebSocket::Handler does Cro::Transform {
                                                          fragmented => False,
                                                          body-byte-stream => supply   # 1000
                                                                           { emit Blob.new(3, 232) });
+                        $promise.keep if $promise;
+                        done;
                     }
-                    done;
                 }
                 QUIT {
                     unless $end {
@@ -46,8 +48,9 @@ class Cro::WebSocket::Handler does Cro::Transform {
                                                          fragmented => False,
                                                          body-byte-stream => supply   # 1011
                                                                           { emit Blob.new(3, 243) });
+                        $promise.keep if $promise;
+                        done;
                     }
-                    done;
                 }
             }
 
@@ -65,6 +68,7 @@ class Cro::WebSocket::Handler does Cro::Transform {
                                                                 });
                         }
                         when Cro::WebSocket::Message::Close {
+                            say "I received that";
                             emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
                                                              fragmented => False,
                                                              body-byte-stream => supply {
