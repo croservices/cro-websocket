@@ -29,7 +29,6 @@ my $p = Promise.new;
 $c.messages.tap(
     -> $m {
         $count++;
-        say(await $m.body-text);
         $p.keep if $count == 3;
     }
 );
@@ -42,6 +41,18 @@ await Promise.in(1);
 $c.send('Wow');
 
 await $p;
+
+my $ping = $c.ping('First');
+await $ping;
+ok $ping.status ~~ Kept, 'Ping is recieved';
+
+$ping = $c.ping;
+await $ping;
+
+$ping = $c.ping(:0timeout);
+dies-ok { await $ping }, 'Timeout breaks ping promise';
+
+say $c.close.result;
 
 $http-server.stop();
 
