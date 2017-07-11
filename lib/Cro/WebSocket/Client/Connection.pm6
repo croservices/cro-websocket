@@ -59,7 +59,6 @@ class Cro::WebSocket::Client::Connection {
                                   $pong.reset;
                               }
                               when $_.opcode == Cro::WebSocket::Message::Close {
-                                  say "Closing response is best!";
                                   $closer.keep($_);
                                   self.close(1000);
                               }
