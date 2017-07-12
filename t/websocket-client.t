@@ -4,12 +4,23 @@ use Cro::HTTP::Router;
 use Cro::HTTP::Router::WebSocket;
 use Test;
 
+my $done = Promise.new;
+
 my $app = route {
     get -> 'chat' {
         web-socket -> $incoming {
             supply {
                 whenever $incoming -> $message {
                     emit('You said: ' ~ await $message.body-text);
+                }
+            }
+        }
+    }
+    get -> 'done' {
+        web-socket -> $incoming, $close {
+            supply {
+                whenever $incoming {
+                    done;
                 }
             }
         }
@@ -21,7 +32,50 @@ my $http-server = Cro::HTTP::Server.new(port => 3005,
 
 $http-server.start();
 
-my $connection = await Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+# Done testing
+
+my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/done';
+
+await Promise.anyof($connection, Promise.in(5));
+if $connection.status !~~ Kept {
+    flunk 'Connection promise is not Kept';
+    bail-out;
+} else {
+    $connection = $connection.result;
+}
+
+$connection.send('Foo');
+
+# We need to wait until Handler's Close met the Connection
+await Promise.in(1);
+
+dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel(by done)';
+
+# Ping testing
+
+$connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+
+await Promise.anyof($connection, Promise.in(5));
+
+$connection .= result;
+
+my $ping = $connection.ping('First');
+await Promise.anyof($ping, Promise.in(5));
+ok $ping.status ~~ Kept, 'Ping is recieved';
+
+$ping = $connection.ping;
+await Promise.anyof($ping, Promise.in(5));
+
+$ping = $connection.ping(:0timeout);
+dies-ok { await $ping }, 'Timeout breaks ping promise';
+
+# Chat testing
+
+$connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+
+await Promise.anyof($connection, Promise.in(5));
+
+$connection .= result;
 
 my $p = Promise.new;
 $connection.messages.tap(-> $mess {
@@ -31,7 +85,11 @@ $connection.messages.tap(-> $mess {
 
 $connection.send('Hello');
 
-await $p;
+await Promise.anyof($p, Promise.in(5));
+
+unless $p.status ~~ Kept {
+    flunk "send does not work";
+}
 
 END { $http-server.stop() };
 

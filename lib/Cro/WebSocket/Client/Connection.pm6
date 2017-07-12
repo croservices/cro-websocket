@@ -26,15 +26,16 @@ class Cro::WebSocket::Client::Connection {
     has Supplier $.out;
     has Supplier $.sender;
     has Supply $.receiver;
-    has Promise $.closer;
+    has Promise $.closer is rw;
     has PromiseFactory $.pong;
-    has Bool $.closed;
+    has Bool $.closed is rw;
 
     method new(:$in, :$out) {
         my $sender = Supplier.new;
         my $receiver = Supplier.new;
         my $closer = Promise.new;
         my $pong = PromiseFactory.new(promises => ());
+        my $closed = False;
 
         my $pp-in = Cro.compose(Cro::WebSocket::FrameParser.new(mask-required => False),
                                 Cro::WebSocket::MessageParser.new
@@ -43,6 +44,8 @@ class Cro::WebSocket::Client::Connection {
         my $pp-out = Cro.compose(Cro::WebSocket::MessageSerializer.new,
                                  Cro::WebSocket::FrameSerializer.new(mask => True)
                                 ).transformer($sender.Supply);
+
+        my $instance = self.bless(:$in, :$out, :$sender, receiver => $receiver.Supply, :$closer, :$pong, :$closed);
 
         $pp-in.tap(-> $_ {
                           if .is-data {
@@ -59,7 +62,8 @@ class Cro::WebSocket::Client::Connection {
                                   $pong.reset;
                               }
                               when $_.opcode == Cro::WebSocket::Message::Close {
-                                  $closer.keep($_);
+                                  $instance.closed = True;
+                                  $instance.closer.keep($_);
                                   self.close(1000);
                               }
                           }
@@ -68,7 +72,7 @@ class Cro::WebSocket::Client::Connection {
                            $out.emit: $_.data;
                        });
 
-        self.bless(:$in, :$out, :$sender, receiver => $receiver.Supply, :$closer, :$pong, closed => False);
+        $instance;
     }
 
     method messages(--> Supply) {
