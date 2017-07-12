@@ -93,4 +93,11 @@ unless $p.status ~~ Kept {
 
 END { $http-server.stop() };
 
+# Closing
+my $closed = $connection.close;
+await Promise.anyof($closed, Promise.in(1));
+ok $closed.status ~~ Kept, 'The connection is closed by close() call';
+
+dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel by close() call';
+
 done-testing;

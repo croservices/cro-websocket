@@ -62,9 +62,8 @@ class Cro::WebSocket::Client::Connection {
                                   $pong.reset;
                               }
                               when $_.opcode == Cro::WebSocket::Message::Close {
-                                  $instance.closed = True;
                                   $instance.closer.keep($_);
-                                  self.close(1000);
+                                  $instance.close(1000);
                               }
                           }
                       });
@@ -89,6 +88,8 @@ class Cro::WebSocket::Client::Connection {
     }
 
     method close($code = 1000, :$timeout --> Promise) {
+        # Double closing has no effect;
+        return if $!closed;
         $!closed = True;
         my $p = Promise.new;
         my &body = -> $_ { supply { emit Blob.new($_ +& 0xFF, ($_ +> 8) +& 0xFF); } };
@@ -104,8 +105,8 @@ class Cro::WebSocket::Client::Connection {
                 $p.keep($message);
             } else {
                 $!sender.emit: $message;
-                await Promise.anyof(Promise.in($timeout), $!closer);
                 $!sender.done;
+                await Promise.anyof(Promise.in($real-timeout), $!closer);
                 if $!closer.status == Kept {
                     $p.keep($!closer.result);
                 } else {
