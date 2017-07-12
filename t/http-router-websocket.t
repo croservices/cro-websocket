@@ -40,7 +40,11 @@ $c.send('Good');
 await Promise.in(1);
 $c.send('Wow');
 
-await $p;
+await Promise.anyof(Promise.in(2), $p);
+
+unless $p.status ~~ Kept {
+    flunk "The responses are not complete";
+}
 
 $http-server.stop();
 
