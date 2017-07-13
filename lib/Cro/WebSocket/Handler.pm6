@@ -23,6 +23,18 @@ class Cro::WebSocket::Handler does Cro::Transform {
                         !! &!block($supplier.Supply, $promise);
 
             whenever $block {
+                sub close(Bool $end, Blob $code, $close-p, $promise) {
+                    unless $end {
+                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
+                                                         fragmented => False,
+                                                         body-byte-stream => supply { emit $code });
+                        # 2 seconds timeout
+                        await Promise.anyof($close-p, Promise.in(2));
+                        $promise.keep if $promise;
+                        done;
+                    }
+                }
+
                 when Cro::WebSocket::Message {
                     emit $_;
                     if $_.opcode == Cro::WebSocket::Message::Close {
@@ -36,28 +48,10 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 when Blob|Str|Supply { emit Cro::WebSocket::Message.new($_) }
 
                 LAST {
-                    unless $end {
-                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                         fragmented => False,
-                                                         body-byte-stream => supply   # 1000
-                                                                          { emit Blob.new(3, 232) });
-                        # 2 seconds timeout
-                        await Promise.anyof($close-response, Promise.in(2));
-                        $promise.keep if $promise;
-                        done;
-                    }
+                    close($end, Blob.new([3, 232]), $close-response, $promise); # bytes of 1000
                 }
                 QUIT {
-                    unless $end {
-                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                         fragmented => False,
-                                                         body-byte-stream => supply   # 1011
-                                                                          { emit Blob.new(3, 243) });
-                        # 2 seconds timeout
-                        await Promise.anyof($close-response, Promise.in(2));
-                        $promise.keep if $promise;
-                        done;
-                    }
+                    close($end, Blob.new([3, 343]), $close-response, $promise); # bytes of 1011
                 }
             }
 
