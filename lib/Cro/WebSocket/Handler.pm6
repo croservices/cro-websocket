@@ -16,20 +16,17 @@ class Cro::WebSocket::Handler does Cro::Transform {
             my $supplier = Supplier::Preserving.new;
             my $promise = Promise.new if &!block.count == 2;
             my $end = False;
-            my $close-response = Promise.new;
 
             my $block = &!block.count == 1
                         ?? &!block($supplier.Supply)
                         !! &!block($supplier.Supply, $promise);
 
             whenever $block {
-                sub close(Bool $end, Blob $code, $close-p, $promise) {
+                sub close(Bool $end, Blob $code, $promise) {
                     unless $end {
                         emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
                                                          fragmented => False,
                                                          body-byte-stream => supply { emit $code });
-                        # 2 seconds timeout
-                        await Promise.anyof($close-p, Promise.in(2));
                         $promise.keep if $promise;
                         done;
                     }
@@ -40,18 +37,16 @@ class Cro::WebSocket::Handler does Cro::Transform {
                     if $_.opcode == Cro::WebSocket::Message::Close {
                         $promise.keep if $promise;
                         $end = True;
-                        # 2 seconds timeout
-                        await Promise.anyof($close-response, Promise.in(2));
                         done;
                     }
                 }
                 when Blob|Str|Supply { emit Cro::WebSocket::Message.new($_) }
 
                 LAST {
-                    close($end, Blob.new([3, 232]), $close-response, $promise); # bytes of 1000
+                    close($end, Blob.new([3, 232]), $promise); # bytes of 1000
                 }
                 QUIT {
-                    close($end, Blob.new([3, 343]), $close-response, $promise); # bytes of 1011
+                    close($end, Blob.new([3, 343]), $promise); # bytes of 1011
                 }
             }
 
@@ -76,7 +71,6 @@ class Cro::WebSocket::Handler does Cro::Transform {
                                                                     done;
                                                                 });
                             with $promise { .keep($m) }
-                            $close-response.keep;
                             $supplier.done;
                         }
                         default {}
