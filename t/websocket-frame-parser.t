@@ -69,6 +69,12 @@ test-example Buf.new([0x89, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f]),
              *.opcode == Cro::WebSocket::Frame::Ping,
              *.payload.decode eq 'Hello';
 
+test-example Buf.new([0x8a, 0x00]),
+             False, 'Empty unmasked ping response',
+             *.fin == True,
+             *.opcode == Cro::WebSocket::Frame::Pong,
+             *.payload.decode eq '';
+
 test-example Buf.new([0x8a, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58]),
              True, 'Masked ping response',
              *.fin == True,
