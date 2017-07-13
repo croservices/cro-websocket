@@ -59,12 +59,13 @@ await Promise.anyof($connection, Promise.in(5));
 
 $connection .= result;
 
-my $ping = $connection.ping('First');
+my $ping = $connection.ping;
+await Promise.anyof($ping, Promise.in(5));
+ok $ping.status ~~ Kept, 'Empty ping is recieved';
+
+$ping = $connection.ping('First');
 await Promise.anyof($ping, Promise.in(5));
 ok $ping.status ~~ Kept, 'Ping is recieved';
-
-$ping = $connection.ping;
-await Promise.anyof($ping, Promise.in(5));
 
 $ping = $connection.ping(:0timeout);
 dies-ok { await $ping }, 'Timeout breaks ping promise';
@@ -91,13 +92,13 @@ unless $p.status ~~ Kept {
     flunk "send does not work";
 }
 
-END { $http-server.stop() };
-
 # Closing
 my $closed = $connection.close;
 await Promise.anyof($closed, Promise.in(1));
 ok $closed.status ~~ Kept, 'The connection is closed by close() call';
 
 dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel by close() call';
+
+END { $http-server.stop() };
 
 done-testing;

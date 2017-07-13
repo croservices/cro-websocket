@@ -38,7 +38,7 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
                 if $m.opcode.value == 8|9|10 {
                     emit Cro::WebSocket::Frame.new(fin => True,
                                                    opcode => Cro::WebSocket::Frame::Opcode($m.opcode.value),
-                                                   payload => $m.body-blob().result);
+                                                   payload => $m.body-blob.result);
                 } else {
                     @order.push: $m;
                     set-current;

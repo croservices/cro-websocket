@@ -135,7 +135,7 @@ class Cro::WebSocket::Client::Connection {
         $!sender.emit(Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Ping,
                                                   fragmented => False,
                                                   body-byte-stream => supply {
-                                                         emit $data.encode if $data;
+                                                         emit ($data ?? Blob.new($data.encode) !! Blob.new);
                                                          done;
                                                      }));
         $p;

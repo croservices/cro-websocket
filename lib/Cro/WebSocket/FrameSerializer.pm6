@@ -42,7 +42,7 @@ class Cro::WebSocket::FrameSerializer does Cro::Transform {
                     for @$mask-buf -> $byte {
                         $message[$i] = $byte; $i++;
                     }
-                    my $payload = (@($frame.payload) Z+^ ((@$mask-buf xx *).flat)).Array;
+                    my $payload = Blob.new((@($frame.payload) Z+^ ((@$mask-buf xx *).flat)).Array);
                     emit Cro::TCP::Message.new(data => $message.append: $payload);
                 } else {
                     emit Cro::TCP::Message.new(data => $message.append: $frame.payload);
