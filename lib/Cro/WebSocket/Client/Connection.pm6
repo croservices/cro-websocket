@@ -31,45 +31,48 @@ class Cro::WebSocket::Client::Connection {
     has Bool $.closed is rw;
 
     method new(:$in, :$out) {
-        my $sender = Supplier.new;
-        my $receiver = Supplier.new;
+        my $sender = Supplier::Preserving.new;
+        my $receiver = Supplier::Preserving.new;
         my $closer = Promise.new;
         my $pong = PromiseFactory.new;
         my $closed = False;
 
-        my $pp-in = Cro.compose(Cro::WebSocket::FrameParser.new(mask-required => False),
-                                Cro::WebSocket::MessageParser.new
-                               ).transformer($in.map(-> $data { Cro::TCP::Message.new(:$data) }));
+        my $pp-in = Cro.compose(
+            Cro::WebSocket::FrameParser.new(:!mask-required),
+            Cro::WebSocket::MessageParser.new
+        ).transformer($in.map(-> $data { Cro::TCP::Message.new(:$data) }));
 
-        my $pp-out = Cro.compose(Cro::WebSocket::MessageSerializer.new,
-                                 Cro::WebSocket::FrameSerializer.new(mask => True)
-                                ).transformer($sender.Supply);
+        my $pp-out = Cro.compose(
+            Cro::WebSocket::MessageSerializer.new,
+            Cro::WebSocket::FrameSerializer.new(:mask)
+        ).transformer($sender.Supply);
 
-        my $instance = self.bless(:$in, :$out, :$sender, receiver => $receiver.Supply, :$closer, :$pong, :$closed);
+        my $instance = self.bless:
+            :$in, :$out, :$sender, receiver => $receiver.Supply, :$closer, :$pong, :$closed;
 
-        $pp-in.tap(-> $_ {
-                          if .is-data {
-                              $receiver.emit: $_;
-                          } else {
-                              when $_.opcode == Cro::WebSocket::Message::Ping {
-                                  my $body-byte-stream = $_.body-byte-stream;
-                                  my $m = Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Pong,
-                                                                      fragmented => False,
-                                                                      :$body-byte-stream);
-                                  $sender.emit: $m;
-                              }
-                              when $_.opcode == Cro::WebSocket::Message::Pong {
-                                  $pong.reset;
-                              }
-                              when $_.opcode == Cro::WebSocket::Message::Close {
-                                  $instance.closer.keep($_);
-                                  $instance.close(1000);
-                              }
-                          }
-                      });
-        $pp-out.tap(-> $_ {
-                           $out.emit: $_.data;
-                       });
+        $pp-in.tap:
+            {
+                if .is-data {
+                    $receiver.emit: $_;
+                } else {
+                    when $_.opcode == Cro::WebSocket::Message::Ping {
+                        my $body-byte-stream = $_.body-byte-stream;
+                        my $m = Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Pong,
+                                                            fragmented => False,
+                                                            :$body-byte-stream);
+                        $sender.emit: $m;
+                    }
+                    when $_.opcode == Cro::WebSocket::Message::Pong {
+                        $pong.reset;
+                    }
+                    when $_.opcode == Cro::WebSocket::Message::Close {
+                        $instance.closer.keep($_);
+                        $instance.close(1000);
+                    }
+                }
+            },
+            quit => { $receiver.quit($_) };
+        $pp-out.tap: { $out.emit: .data }, quit => { $out.quit($_) };
 
         $instance;
     }
