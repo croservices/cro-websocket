@@ -6,7 +6,7 @@ use Cro::WebSocket::Message;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
 
-class PromiseFactory {
+my class PromiseFactory {
     has @.promises;
 
     method get-new(--> Promise) {
