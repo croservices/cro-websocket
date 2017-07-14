@@ -23,28 +23,27 @@ $http-server.start();
 
 my $c = await Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
 
-my $count = 0;
 my $p = Promise.new;
-
-$c.messages.tap(
+my %seen;
+$c.messages.tap:
     -> $m {
-        $count++;
-        $p.keep if $count == 3;
-    }
-);
+        %seen{await $m.body-text}++;
+        $p.keep if %seen == 3;
+    },
+    quit => {
+        .note;
+        exit(1);
+    };
 
-# XXX Remove awaits after race hang will be fixed
 $c.send('Hello');
-await Promise.in(1);
 $c.send('Good');
-await Promise.in(1);
 $c.send('Wow');
 
-await Promise.anyof(Promise.in(2), $p);
-
-unless $p.status ~~ Kept {
-    flunk "The responses are not complete";
-}
+await Promise.anyof(Promise.in(5), $p);
+ok $p.status == Kept, 'All expected responses were received';
+ok %seen{'You said: Hello'}:exists, 'Got first message response';
+ok %seen{'You said: Good'}:exists, 'Got second message response';
+ok %seen{'You said: Wow'}:exists, 'Got third message response';
 
 $http-server.stop();
 
