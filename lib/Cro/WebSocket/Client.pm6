@@ -33,7 +33,7 @@ class Cro::WebSocket::Client {
                 Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
 
             %options<body-byte-stream> = $out.Supply;
-            Cro::HTTP::Client.get($full-uri, %options).tap(
+            Cro::HTTP::Client.get($full-uri, %options).tap:
                 -> $resp {
                     if $resp.status == 101 {
                         # Headers check;
@@ -46,15 +46,20 @@ class Cro::WebSocket::Client {
 
                         $p.keep(Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out));
                     } else {
-                        $p.break;
+                        $p.break('Server failed to upgrade web socket connection');
                     }
-                });
+                },
+                quit => { $p.break($_) };
 
             CATCH {
-                $p.break;
+                default {
+                    $p.break($_);
+                }
             }
             QUIT {
-                $p.break;
+                default {
+                    $p.break($_);
+                }
             }
         }
         $p;
