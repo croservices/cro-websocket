@@ -27,10 +27,12 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
 
             whenever $in -> Cro::TCP::Message $packet {
                 my Blob $data = $packet.data;
+                $data = $buffer ~ $data; $buffer = Buf.new;
+
                 loop {
                     last if $data eq Blob.new && $expecting !== Payload|MaskKey;
-
                     $_ = $expecting;
+
                     when FinOp {
                         $frame.fin = self!check-first-bit($data[0]); # Check first bit.
                         $frame.opcode = Cro::WebSocket::Frame::Opcode($data[0] +& 15); # Last 4 bits.
@@ -55,7 +57,6 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         }
                     }
                     when Length2 {
-                        $data.prepend: $buffer; $buffer = Buf.new;
                         if $data.elems < 2 {
                             $buffer.append: $data; last;
                         } else {
@@ -66,7 +67,6 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         }
                     }
                     when Length3 {
-                        $data.prepend: $buffer; $buffer = Buf.new;
                         if $data.elems < 8 {
                             $buffer.append: $data; last;
                         } else {
@@ -81,7 +81,6 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     }
                     when MaskKey {
                         if $mask-flag {
-                            $data.prepend: $buffer; $buffer = Buf.new;
                             if $data.elems < 4 {
                                 $buffer.append: $data; last;
                             }
@@ -94,18 +93,16 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                     when Payload {
                         if $length == 0 {
                             $frame.payload = Blob.new;
-                            emit $frame;
                             $expecting = FinOp;
+                            emit $frame;
                         } else {
-                            # In case something is buffered;
-                            $data.prepend: $buffer; $buffer = Buf.new;
                             if $data.elems >= $length {
                                 my $payload = $data.subbuf(0, $length);
-                                $payload = $mask-flag ?? (@$payload Z+^ (@$mask xx *).flat).Array !! $payload;
+                                $payload = $mask-flag ?? Blob.new((@$payload Z+^ (@$mask xx *).flat).Array) !! $payload;
                                 $frame.payload = Blob.new: $payload;
-                                emit $frame;
-                                $buffer.append: $data.subbuf($length);
-                                $expecting = FinOp; next;
+                                $data .= subbuf($length);
+                                $expecting = FinOp;
+                                emit $frame; next if $data.elems > 0;
                             } else {
                                 $buffer.append: $data;
                             }
