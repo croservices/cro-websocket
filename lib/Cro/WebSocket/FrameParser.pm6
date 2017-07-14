@@ -99,11 +99,13 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         } else {
                             # In case something is buffered;
                             $data.prepend: $buffer; $buffer = Buf.new;
-                            if $data.elems == $length {
-                                my $payload = $mask-flag ?? (@$data Z+^ (@$mask xx *).flat).Array !! $data;
+                            if $data.elems >= $length {
+                                my $payload = $data.subbuf(0, $length);
+                                $payload = $mask-flag ?? (@$payload Z+^ (@$mask xx *).flat).Array !! $payload;
                                 $frame.payload = Blob.new: $payload;
                                 emit $frame;
-                                $expecting = FinOp; last;
+                                $buffer.append: $data.subbuf($length);
+                                $expecting = FinOp; next;
                             } else {
                                 $buffer.append: $data;
                             }
