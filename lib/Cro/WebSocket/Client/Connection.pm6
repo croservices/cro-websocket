@@ -34,7 +34,7 @@ class Cro::WebSocket::Client::Connection {
         my $sender = Supplier.new;
         my $receiver = Supplier.new;
         my $closer = Promise.new;
-        my $pong = PromiseFactory.new(promises => ());
+        my $pong = PromiseFactory.new;
         my $closed = False;
 
         my $pp-in = Cro.compose(Cro::WebSocket::FrameParser.new(mask-required => False),
