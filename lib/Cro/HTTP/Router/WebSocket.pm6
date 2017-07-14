@@ -36,12 +36,14 @@ sub web-socket(&handler) is export {
     $response.append-header('Connection', 'Upgrade');
     $response.append-header('Sec-WebSocket-Accept', encode-base64(sha1($key ~ $magic), :str));
 
-    my Cro::Transform $pipeline;
-    $pipeline = Cro.compose(Cro::WebSocket::FrameParser.new(mask-required => True),
-                            Cro::WebSocket::MessageParser.new,
-                            Cro::WebSocket::Handler.new(&handler),
-                            Cro::WebSocket::MessageSerializer.new,
-                            Cro::WebSocket::FrameSerializer.new(mask => False));
+    my Cro::Transform $pipeline = Cro.compose(
+        label => "WebSocket Handler",
+        Cro::WebSocket::FrameParser.new(:mask-required),
+        Cro::WebSocket::MessageParser.new,
+        Cro::WebSocket::Handler.new(&handler),
+        Cro::WebSocket::MessageSerializer.new,
+        Cro::WebSocket::FrameSerializer.new(:!mask)
+    );
     $response.set-body-byte-stream:
         $pipeline.transformer(
             $request.body-byte-stream.map(-> $data { Cro::TCP::Message.new(:$data) })
