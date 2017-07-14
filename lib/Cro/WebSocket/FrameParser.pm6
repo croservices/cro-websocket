@@ -27,7 +27,8 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
 
             whenever $in -> Cro::TCP::Message $packet {
                 my Blob $data = $packet.data;
-                $data = $buffer ~ $data; $buffer = Buf.new;
+                $data = $buffer ~ $data;
+                $buffer = Buf.new;
 
                 loop {
                     last if $data eq Blob.new && $expecting !== Payload|MaskKey;
@@ -98,7 +99,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         } else {
                             if $data.elems >= $length {
                                 my $payload = $data.subbuf(0, $length);
-                                $payload = $mask-flag ?? Blob.new((@$payload Z+^ (@$mask xx *).flat).Array) !! $payload;
+                                $payload = $mask-flag ?? Blob.new((@$payload Z+^ (@$mask xx *).flat)) !! $payload;
                                 $frame.payload = Blob.new: $payload;
                                 $data .= subbuf($length);
                                 $expecting = FinOp;
