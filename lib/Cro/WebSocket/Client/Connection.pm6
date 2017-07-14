@@ -81,7 +81,7 @@ class Cro::WebSocket::Client::Connection {
         $!receiver;
     }
 
-    multi method send(Cro::WebSocket::Message $m) {
+    multi method send(Cro::WebSocket::Message $m --> Nil) {
         die if $!closed;
         $!sender.emit($m);
     }
