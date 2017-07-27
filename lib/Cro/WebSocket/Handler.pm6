@@ -32,9 +32,10 @@ class Cro::WebSocket::Handler does Cro::Transform {
             whenever $block {
                 sub close(Bool $end, Blob $code) {
                     unless $end {
-                        emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                         fragmented => False,
-                                                         body-byte-stream => supply { emit $code });
+                        emit Cro::WebSocket::Message.new(
+                            opcode => Cro::WebSocket::Message::Close,
+                            fragmented => False,
+                            body-byte-stream => supply { emit $code });
                         keep-close-promise();
                         done;
                     }
@@ -64,20 +65,22 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 } else {
                     given $m.opcode {
                         when Cro::WebSocket::Message::Ping {
-                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Pong,
-                                                             fragmented => False,
-                                                             body-byte-stream => supply {
-                                                                    emit (await $m.body-blob);
-                                                                    done;
-                                                                });
+                            emit Cro::WebSocket::Message.new(
+                                opcode => Cro::WebSocket::Message::Pong,
+                                fragmented => False,
+                                body-byte-stream => supply {
+                                    emit (await $m.body-blob);
+                                    done;
+                                });
                         }
                         when Cro::WebSocket::Message::Close {
-                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                             fragmented => False,
-                                                             body-byte-stream => supply {
-                                                                    emit (await $m.body-blob);
-                                                                    done;
-                                                                });
+                            emit Cro::WebSocket::Message.new(
+                                opcode => Cro::WebSocket::Message::Close,
+                                fragmented => False,
+                                body-byte-stream => supply {
+                                    emit (await $m.body-blob);
+                                    done;
+                                });
                             keep-close-promise($m);
                             $supplier.done;
                         }
