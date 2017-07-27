@@ -68,6 +68,7 @@ class Cro::WebSocket::Client::Connection {
                     when $_.opcode == Cro::WebSocket::Message::Close {
                         $instance.closer.keep($_);
                         $instance.close(1000);
+                        $receiver.done;
                     }
                 }
             },

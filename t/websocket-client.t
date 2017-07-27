@@ -47,7 +47,7 @@ if $connection.status !~~ Kept {
 $connection.send('Foo');
 
 # We need to wait until Handler's Close met the Connection
-await Promise.in(1);
+await $connection.messages;
 
 dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel(by done)';
 
