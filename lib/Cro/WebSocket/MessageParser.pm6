@@ -11,28 +11,28 @@ class Cro::WebSocket::MessageParser does Cro::Transform {
             my $last;
             whenever $in -> Cro::WebSocket::Frame $frame {
                 # Control frames are processed immediately
-                if $frame.opcode.value == 8|9|10 {
-                    emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode.value),
+                if $frame.opcode == 8|9|10 {
+                    emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode),
                                                      fragmented => False,
                                                      body-byte-stream => supply { emit $frame.payload });
                 } else {
                     if $frame.fin {
-                        if $frame.opcode.value == 0 {
+                        if $frame.opcode == 0 {
                             $last.emit($frame.payload);
                             $last.done;
                             $last = Supplier::Preserving.new;
                         } else {
-                            emit Cro::WebSocket::Message.new($frame.opcode.value == 1
+                            emit Cro::WebSocket::Message.new($frame.opcode == 1
                                                              ?? $frame.payload.decode('utf-8')
                                                              !! $frame.payload);
                         }
                     } else {
-                        if $frame.opcode.value == 0 {
+                        if $frame.opcode == 0 {
                             $last.emit($frame.payload);
                         } else {
                             $last = Supplier::Preserving.new;
                             $last.emit($frame.payload);
-                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode.value),
+                            emit Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Opcode($frame.opcode),
                                                              fragmented => True,
                                                              body-byte-stream => $last.Supply);
                         }
