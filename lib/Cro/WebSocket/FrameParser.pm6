@@ -8,6 +8,10 @@ class X::Cro::WebSocket::IncorrectMaskFlag is Exception {
     }
 }
 
+class X::Cro::WebSocket::Disconnect is Exception {
+    method message() { "Connection unexpectedly closed in the middle of frame" }
+}
+
 class Cro::WebSocket::FrameParser does Cro::Transform {
     has Bool $.mask-required;
 
@@ -109,6 +113,9 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                             }
                         }
                     }
+                }
+                LAST {
+                    die X::Cro::WebSocket::Disconnect.new if $expecting != FinOp;
                 }
             }
         }
