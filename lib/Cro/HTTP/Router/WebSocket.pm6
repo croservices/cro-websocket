@@ -15,18 +15,20 @@ sub web-socket(&handler) is export {
     my $request = request;
     my $response = response;
 
-    unless $request.header('sec-websocket-version') eq '13' {
-        $response.status = 426;
-        $response.append-header('Sec-WebSocket-Version', '13');
-    };
-
     # Bad request checking
     if !($request.method eq 'GET')
     || !($request.http-version eq '1.1')
     || !$request.has-header('host')
-    || !(($request.header('Connection') // '').lc eq 'Upgrade')
+    || !(($request.header('Connection') // '').lc eq 'upgrade')
     || decode-base64($request.header('sec-websocket-key') // '', :bin).elems != 16 {
         bad-request;
+        return;
+    };
+
+    unless ($request.header('sec-websocket-version') // '') eq '13' {
+        $response.status = 426;
+        $response.append-header('Sec-WebSocket-Version', '13');
+        return;
     };
 
     my $key = $request.header('sec-websocket-key');

@@ -1,7 +1,8 @@
-use Cro::WebSocket::Client;
-use Cro::HTTP::Server;
-use Cro::HTTP::Router;
+use Cro::HTTP::Client;
 use Cro::HTTP::Router::WebSocket;
+use Cro::HTTP::Router;
+use Cro::HTTP::Server;
+use Cro::WebSocket::Client;
 use Test;
 
 my $app = route {
@@ -20,6 +21,9 @@ my $http-server = Cro::HTTP::Server.new(port => 3005,
                                         application => $app);
 
 $http-server.start();
+
+throws-like { await Cro::HTTP::Client.get('http://localhost:3005/chat') },
+    X::Cro::HTTP::Error::Client, 'Connection is not upgraded, 400 Bad Request';
 
 my $c = await Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
 
