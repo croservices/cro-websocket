@@ -16,8 +16,6 @@ class Cro::WebSocket::Client {
         my $full-uri = self ?? $!uri ~ $uri !! $uri;
         $full-uri = Cro::Uri.parse(~$uri);
 
-        my $p = Promise.new;
-
         start {
             my $out  = Supplier::Preserving.new;
 
@@ -32,35 +30,19 @@ class Cro::WebSocket::Client {
                 Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
 
             %options<body-byte-stream> = $out.Supply;
-            Cro::HTTP::Client.get($full-uri, %options).tap:
-                -> $resp {
-                    if $resp.status == 101 {
-                        # Headers check;
-                        die unless $resp.header('upgrade') eq 'websocket';
-                        die unless $resp.header('connection') eq 'Upgrade';
-                        die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
-                        # No extensions for now
-                        # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
-                        # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
-
-                        $p.keep(Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out));
-                    } else {
-                        $p.break('Server failed to upgrade web socket connection');
-                    }
-                },
-                quit => { $p.break($_) };
-
-            CATCH {
-                default {
-                    $p.break($_);
-                }
-            }
-            QUIT {
-                default {
-                    $p.break($_);
-                }
+            my $resp = await Cro::HTTP::Client.get($full-uri, %options);
+            if $resp.status == 101 {
+                # Headers check;
+                die unless $resp.header('upgrade') eq 'websocket';
+                die unless $resp.header('connection') eq 'Upgrade';
+                die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
+                # No extensions for now
+                # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
+                # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
+                Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out)
+            } else {
+                die 'Server failed to upgrade web socket connection';
             }
         }
-        $p;
     }
 }
