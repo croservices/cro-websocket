@@ -1,0 +1,23 @@
+{
+    "perl"          : "6.*",
+    "name"          : "Cro::WebSocket",
+    "version"       : "0.7",
+    "description"   : "Libraries for building reactive services in Perl 6 - WebSocket part.",
+    "authors"       : [ "Jonathan Worthington <jnthn@jnthn.net>" ],
+    "license"       : "Artistic-2.0",
+    "depends"       : [  "Cro::HTTP", "Base64", "Digest::SHA1::Native", "Crypt::Random" ],
+    "provides"      : {
+        "Cro::HTTP::Router::WebSocket": "lib/Cro/HTTP/Router/WebSocket.pm6",
+        "Cro::WebSocket::Client": "lib/Cro/WebSocket/Client.pm6",
+        "Cro::WebSocket::Client::Connection": "lib/Cro/WebSocket/Client/Connection.pm6",
+        "Cro::WebSocket::Frame": "lib/Cro/WebSocket/Frame.pm6",
+        "Cro::WebSocket::FrameParser": "lib/Cro/WebSocket/FrameParser.pm6",
+        "Cro::WebSocket::FrameSerializer": "lib/Cro/WebSocket/FrameSerializer.pm6",
+        "Cro::WebSocket::Handler": "lib/Cro/WebSocket/Handler.pm6",
+        "Cro::WebSocket::Message": "lib/Cro/WebSocket/Message.pm6",
+        "Cro::WebSocket::MessageParser": "lib/Cro/WebSocket/MessageParser.pm6",
+        "Cro::WebSocket::MessageSerializer": "lib/Cro/WebSocket/MessageSerializer.pm6"
+    },
+    "resources": [],
+    "source-url"    : "https://github.com/jnthn/cro-websocket.git"
+}
