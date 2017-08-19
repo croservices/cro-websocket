@@ -27,18 +27,20 @@ my $app = route {
     }
 }
 
-my $http-server = Cro::HTTP::Server.new(port => 3005,
-                                        application => $app);
-
+my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
 $http-server.start();
+END { $http-server.stop() };
 
 # Done testing
 
 my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/done';
 
 await Promise.anyof($connection, Promise.in(5));
-if $connection.status !~~ Kept {
+if $connection.status != Kept {
     flunk 'Connection promise is not Kept';
+    if $connection.status == Broken {
+        diag $connection.cause;
+    }
     bail-out;
 } else {
     $connection = $connection.result;
@@ -98,7 +100,5 @@ await Promise.anyof($closed, Promise.in(1));
 ok $closed.status ~~ Kept, 'The connection is closed by close() call';
 
 dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel by close() call';
-
-END { $http-server.stop() };
 
 done-testing;
