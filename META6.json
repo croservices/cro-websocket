@@ -19,5 +19,5 @@
         "Cro::WebSocket::MessageSerializer": "lib/Cro/WebSocket/MessageSerializer.pm6"
     },
     "resources": [],
-    "source-url"    : "https://github.com/jnthn/cro-websocket.git"
+    "source-url"    : "https://github.com/croservices/cro-websocket.git"
 }
