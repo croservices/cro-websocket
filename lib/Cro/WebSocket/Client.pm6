@@ -9,12 +9,18 @@ use Digest::SHA1::Native;
 class Cro::WebSocket::Client {
     has $.uri;
 
-    method connect($uri? --> Promise) {
-        without $uri {
-            die if !self;
+    method connect($uri = '', :%ca? --> Promise) {
+        my $parsed-url;
+        if self && self.uri {
+            $parsed-url = Cro::Uri.parse($uri ~~ Cro::Uri
+                                         ?? self.uri ~ $uri.Str
+                                         !! self.uri ~ $uri);
+        } else {
+            $parsed-url = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
         }
-        my $full-uri = self ?? $!uri ~ $uri !! $uri;
-        $full-uri = Cro::Uri.parse(~$uri);
+        if $parsed-url.scheme eq 'wss' && !%ca {
+            die "Cannot connect through wss without certificate specified";
+        }
 
         start {
             my $out  = Supplier::Preserving.new;
@@ -30,7 +36,7 @@ class Cro::WebSocket::Client {
                 Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
 
             %options<body-byte-stream> = $out.Supply;
-            my $resp = await Cro::HTTP::Client.get($full-uri, %options);
+            my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
             if $resp.status == 101 {
                 # Headers check;
                 die unless $resp.header('upgrade') eq 'websocket';
