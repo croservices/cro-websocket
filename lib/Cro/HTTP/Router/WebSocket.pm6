@@ -19,7 +19,7 @@ sub web-socket(&handler) is export {
     if !($request.method eq 'GET')
     || !($request.http-version eq '1.1')
     || !$request.has-header('host')
-    || !(($request.header('Connection') // '').lc eq 'upgrade')
+    || !(($request.header('Connection') // '').lc ~~ /upgrade/)
     || decode-base64($request.header('sec-websocket-key') // '', :bin).elems != 16 {
         bad-request;
         return;
