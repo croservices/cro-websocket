@@ -39,4 +39,8 @@ class Cro::WebSocket::Message does Cro::Message {
                        }
                    })
     }
+
+    method trace-output(--> Str) {
+        "WebSocket Message - {$!opcode}\n";
+    }
 }
