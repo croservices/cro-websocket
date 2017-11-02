@@ -58,6 +58,7 @@ dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel(by 
 $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
 
 await Promise.anyof($connection, Promise.in(5));
+die "Connection timed out" unless $connection;
 
 $connection .= result;
 
@@ -77,6 +78,7 @@ dies-ok { await $ping }, 'Timeout breaks ping promise';
 $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
 
 await Promise.anyof($connection, Promise.in(5));
+die "Connection timed out" unless $connection;
 
 $connection .= result;
 
