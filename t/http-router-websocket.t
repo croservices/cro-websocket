@@ -17,15 +17,15 @@ my $app = route {
     }
 }
 
-my $http-server = Cro::HTTP::Server.new(port => 3005,
+my $http-server = Cro::HTTP::Server.new(port => 3006,
                                         application => $app);
 
 $http-server.start();
 
-throws-like { await Cro::HTTP::Client.get('http://localhost:3005/chat') },
+throws-like { await Cro::HTTP::Client.get('http://localhost:3006/chat') },
     X::Cro::HTTP::Error::Client, 'Connection is not upgraded, 400 Bad Request';
 
-my $c = await Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+my $c = await Cro::WebSocket::Client.connect: 'http://localhost:3006/chat';
 
 my $p = Promise.new;
 my %seen;
