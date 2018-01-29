@@ -1,6 +1,6 @@
-use Cro::Message;
+use Cro::MessageWithBody;
 
-class Cro::WebSocket::Message does Cro::Message {
+class Cro::WebSocket::Message does Cro::MessageWithBody {
     enum Opcode (:Text(1), :Binary(2), :Ping(9), :Pong(10), :Close(8));
     has Opcode $.opcode;
 
@@ -28,16 +28,6 @@ class Cro::WebSocket::Message does Cro::Message {
 
     method body-text(--> Promise) {
         self.body-blob.then: -> $p { $p.result.decode('utf-8') }
-    }
-
-    method body-blob(--> Promise) {
-        Promise(supply {
-                       my $joined = Blob.new;
-                       whenever $!body-byte-stream -> Blob $blob {
-                           $joined = $joined ~ $blob if $blob;
-                           LAST emit $joined;
-                       }
-                   })
     }
 
     method trace-output(--> Str) {
