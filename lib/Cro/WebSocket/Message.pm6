@@ -26,9 +26,7 @@ class Cro::WebSocket::Message does Cro::MessageWithBody {
     method is-binary() { $!opcode == Binary }
     method is-data() { $!opcode == Text | Binary }
 
-    method body-text(--> Promise) {
-        self.body-blob.then: -> $p { $p.result.decode('utf-8') }
-    }
+    method body-text-encoding(Blob $blob) { self.is-text ?? 'utf-8' !! Nil }
 
     method trace-output(--> Str) {
         "WebSocket Message - {$!opcode}\n";
