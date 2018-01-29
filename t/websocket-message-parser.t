@@ -49,7 +49,7 @@ frame-to-message (Cro::WebSocket::Frame.new(fin => True,
                  'Unmasked ping request',
                  *.opcode == Cro::WebSocket::Message::Ping,
                  *.fragmented == False,
-                 *.body-text.result eq 'Hello';
+                 *.body-blob.result.decode('ascii') eq 'Hello';
 
 my @random-data = 255.rand.Int xx 256;
 

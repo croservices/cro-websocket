@@ -9,7 +9,8 @@ is await($message.body-text), 'Meteor', 'Body is passed';
 $message = Cro::WebSocket::Message.new(Buf.new('Meteor'.encode('utf-8')));
 is $message.is-binary, True, 'Is binary';
 is $message.is-data, True, 'Is data';
-is await($message.body-text), 'Meteor', 'Body is parsed';
+throws-like { await($message.body-text) }, X::Cro::BodyNotText,
+    'Binary message cannot have body-text called on it';
 is await($message.body-blob), 'Meteor'.encode('utf-8'), 'Body can be get as blob';
 
 my $supplier = Supplier.new;
