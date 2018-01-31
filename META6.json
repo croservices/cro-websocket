@@ -6,7 +6,8 @@
     "tags"          : [ "WebSocket", "Client", "Server" ],
     "authors"       : [ "Jonathan Worthington <jnthn@jnthn.net>" ],
     "license"       : "Artistic-2.0",
-    "depends"       : [  "Cro::HTTP", "Base64", "Digest::SHA1::Native", "Crypt::Random" ],
+    "depends"       : [  "Cro::HTTP", "Base64", "Digest::SHA1::Native", "Crypt::Random",
+                         "JSON::Fast" ],
     "provides"      : {
         "Cro::HTTP::Router::WebSocket": "lib/Cro/HTTP/Router/WebSocket.pm6",
         "Cro::WebSocket::BodyParsers": "lib/Cro/WebSocket/BodyParsers.pm6",

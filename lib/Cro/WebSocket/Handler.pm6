@@ -43,13 +43,15 @@ class Cro::WebSocket::Handler does Cro::Transform {
 
                 when Cro::WebSocket::Message {
                     emit $_;
-                    if $_.opcode == Cro::WebSocket::Message::Close {
+                    if .opcode == Cro::WebSocket::Message::Close {
                         keep-close-promise();
                         $end = True;
                         done;
                     }
                 }
-                when Blob|Str|Supply { emit Cro::WebSocket::Message.new($_) }
+                default {
+                    emit Cro::WebSocket::Message.new($_)
+                }
 
                 LAST {
                     close($end, Blob.new([3, 232])); # bytes of 1000

@@ -8,13 +8,13 @@ use Cro::WebSocket::Message::Opcode;
 class Cro::WebSocket::Message does Cro::MessageWithBody {
     has Cro::WebSocket::Message::Opcode $.opcode is rw;
     has Bool $.fragmented;
-    has Cro::BodyParserSelector $.body-parser-selector =
+    has Cro::BodyParserSelector $.body-parser-selector is rw =
         Cro::BodyParserSelector::List.new:
             :parsers[
                 Cro::WebSocket::BodyParser::Text,
                 Cro::WebSocket::BodyParser::Binary
             ];
-    has Cro::BodySerializerSelector $.body-serializer-selector =
+    has Cro::BodySerializerSelector $.body-serializer-selector is rw =
         Cro::BodySerializerSelector::List.new:
             :serializers[
                 Cro::WebSocket::BodySerializer::Text,
