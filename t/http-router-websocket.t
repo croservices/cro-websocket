@@ -31,6 +31,17 @@ my $app = route {
                 }
             }
     }
+
+    get -> 'json' {
+        web-socket :json, -> $incoming {
+            supply whenever $incoming -> $message {
+                my $body = await $message.body;
+                $body<added> = 4242;
+                $body<updated>++;
+                emit $body;
+            }
+        }
+    }
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3006, application => $app);
@@ -81,6 +92,22 @@ throws-like { await Cro::HTTP::Client.get('http://localhost:3006/chat') },
     is $parsed<updated>, 100, 'Expected data returned (1)';
     is $parsed<kept>, 'xxx', 'Expected data returned (2)';
     is $parsed<added>, 42, 'Expected data returned (3)';
+    $c.close;
+}
+
+{
+    use JSON::Fast;
+
+    my $c = await Cro::WebSocket::Client.connect: 'http://localhost:3006/json';
+    my $reply-promise = $c.messages.head.Promise;
+    $c.send(to-json({ updated => 102, kept => 'xxxy' }));
+    my $reply = await $reply-promise;
+    my $parsed;
+    lives-ok { $parsed = from-json await $reply.body-text },
+        'Get back valid JSON from websocket endpoint that uses :json';
+    is $parsed<updated>, 103, 'Expected data returned (1)';
+    is $parsed<kept>, 'xxxy', 'Expected data returned (2)';
+    is $parsed<added>, 4242, 'Expected data returned (3)';
     $c.close;
 }
 

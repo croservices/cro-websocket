@@ -49,7 +49,7 @@ my class SetBodySerializers does Cro::Transform {
     }
 }
 
-sub web-socket(&handler, :$body-parsers, :$body-serializers) is export {
+sub web-socket(&handler, :$json, :$body-parsers is copy,  :$body-serializers is copy) is export {
     my constant $magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
     my $request = request;
@@ -70,6 +70,21 @@ sub web-socket(&handler, :$body-parsers, :$body-serializers) is export {
         $response.append-header('Sec-WebSocket-Version', '13');
         return;
     };
+
+    if $json {
+        if $body-parsers === Any {
+            $body-parsers = Cro::WebSocket::BodyParser::JSON;
+        }
+        else {
+            die "Cannot use :json together with :body-parsers";
+        }
+        if $body-serializers === Any {
+            $body-serializers = Cro::WebSocket::BodySerializer::JSON;
+        }
+        else {
+            die "Cannot use :json together with :body-serializers";
+        }
+    }
 
     my @before;
     unless $body-parsers === Any {
