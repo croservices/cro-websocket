@@ -16,8 +16,7 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
                 return if @order.elems == 0;
                 return if $current;
 
-                $current = @order[0];
-                @order = @order[1..*];
+                $current = @order.shift;
                 whenever $current.body-byte-stream -> $payload {
                     my $opcode = $first
                                  ?? Cro::WebSocket::Frame::Opcode($current.opcode.value)
@@ -35,9 +34,10 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
             }
 
             whenever $in -> Cro::WebSocket::Message $m {
-                if $m.opcode.value == 8|9|10 {
+                my $opcode = $m.opcode // -1;
+                if $opcode == 8|9|10 {
                     emit Cro::WebSocket::Frame.new(fin => True,
-                                                   opcode => Cro::WebSocket::Frame::Opcode($m.opcode.value),
+                                                   opcode => Cro::WebSocket::Frame::Opcode($opcode.value),
                                                    payload => $m.body-blob.result);
                 } else {
                     @order.push: $m;

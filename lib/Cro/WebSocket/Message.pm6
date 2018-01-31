@@ -1,25 +1,43 @@
+use Cro::BodyParserSelector;
+use Cro::BodySerializerSelector;
 use Cro::MessageWithBody;
+use Cro::WebSocket::BodyParsers;
+use Cro::WebSocket::BodySerializers;
+use Cro::WebSocket::Message::Opcode;
 
 class Cro::WebSocket::Message does Cro::MessageWithBody {
-    enum Opcode (:Text(1), :Binary(2), :Ping(9), :Pong(10), :Close(8));
-    has Opcode $.opcode;
-
+    has Cro::WebSocket::Message::Opcode $.opcode is rw;
     has Bool $.fragmented;
+    has Cro::BodyParserSelector $.body-parser-selector =
+        Cro::BodyParserSelector::List.new:
+            :parsers[
+                Cro::WebSocket::BodyParser::Text,
+                Cro::WebSocket::BodyParser::Binary
+            ];
+    has Cro::BodySerializerSelector $.body-serializer-selector =
+        Cro::BodySerializerSelector::List.new:
+            :serializers[
+                Cro::WebSocket::BodySerializer::Text,
+                Cro::WebSocket::BodySerializer::Binary
+            ];
 
-    has Supply $.body-byte-stream;
+    multi method new(Supply $body-byte-stream) {
+        self.bless: :opcode(Binary), :fragmented, :$body-byte-stream;
+    }
+    multi method new($body) {
+        self.bless:
+            :opcode($body ~~ Str ?? Text !! Binary),
+            :fragmented($body !~~ Str && $body !~~ Blob),
+            :$body;
+    }
 
-    multi method new(Str $body) {
-        self.bless: opcode => Text, fragmented => False, body-byte-stream => supply {
-            emit $body.encode('utf-8');
+    submethod TWEAK(:$body-byte-stream, :$body) {
+        with $body-byte-stream {
+            self.set-body-byte-stream($body-byte-stream);
         }
-    }
-    multi method new(Blob $body) {
-        self.bless: opcode => Binary, fragmented => False, body-byte-stream => supply {
-            emit $body;
+        orwith $body {
+            self.set-body($body);
         }
-    }
-    multi method new(Supply $supply) {
-        self.bless: opcode => Binary, fragmented => True, body-byte-stream => $supply;
     }
 
     method is-text() { $!opcode == Text }
@@ -29,6 +47,6 @@ class Cro::WebSocket::Message does Cro::MessageWithBody {
     method body-text-encoding(Blob $blob) { self.is-text ?? 'utf-8' !! Nil }
 
     method trace-output(--> Str) {
-        "WebSocket Message - {$!opcode}\n";
+        "WebSocket Message - {$!opcode // 'Opcode Unset'}\n";
     }
 }
