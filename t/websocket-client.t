@@ -131,9 +131,25 @@ END { $http-server.stop() };
     given await $response {
         my $body = await .body;
         ok $body.isa(Hash), 'Got hash back from body, thanks to JSON body parser';
-        is $body<kept>, 'xxx', 'Correct has content (1)';
-        is $body<added>, 42, 'Correct has content (2)';
-        is $body<updated>, 100, 'Correct has content (3)';
+        is $body<kept>, 'xxx', 'Correct hash content (1)';
+        is $body<added>, 42, 'Correct hash content (2)';
+        is $body<updated>, 100, 'Correct hash content (3)';
+    }
+}
+
+# The :json option for the client
+{
+    my $client = Cro::WebSocket::Client.new: :json;
+    my $connection = await $client.connect: 'http://localhost:3005/json';
+    my $response = $connection.messages.head.Promise;
+    lives-ok { $connection.send({ kept => 'xxy', updated => 999 }) },
+        'Can send Hash using client constructed with :json';
+    given await $response {
+        my $body = await .body;
+        ok $body.isa(Hash), 'Got hash back from body, thanks to :json';
+        is $body<kept>, 'xxy', 'Correct hash content (1)';
+        is $body<added>, 42, 'Correct hash content (2)';
+        is $body<updated>, 1000, 'Correct hash content (3)';
     }
 }
 
