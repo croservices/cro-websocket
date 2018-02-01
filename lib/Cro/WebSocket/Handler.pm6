@@ -26,8 +26,8 @@ class Cro::WebSocket::Handler does Cro::Transform {
             }
 
             my $block = &!block.count == 1
-                        ?? &!block($supplier.Supply)
-                        !! &!block($supplier.Supply, $on-close);
+                        ?? &!block($supplier.Supply.Channel.Supply)
+                        !! &!block($supplier.Supply.Channel.Supply, $on-close);
 
             whenever $block {
                 sub close(Bool $end, Blob $code) {

@@ -18,6 +18,7 @@
         "Cro::WebSocket::FrameParser": "lib/Cro/WebSocket/FrameParser.pm6",
         "Cro::WebSocket::FrameSerializer": "lib/Cro/WebSocket/FrameSerializer.pm6",
         "Cro::WebSocket::Handler": "lib/Cro/WebSocket/Handler.pm6",
+        "Cro::WebSocket::Internal": "lib/Cro/WebSocket/Internal.pm6",
         "Cro::WebSocket::Message": "lib/Cro/WebSocket/Message.pm6",
         "Cro::WebSocket::Message::Opcode": "lib/Cro/WebSocket/Message/Opcode.pm6",
         "Cro::WebSocket::MessageParser": "lib/Cro/WebSocket/MessageParser.pm6",

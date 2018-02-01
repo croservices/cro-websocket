@@ -2,6 +2,7 @@ use Cro;
 use Cro::TCP;
 use Cro::WebSocket::FrameParser;
 use Cro::WebSocket::FrameSerializer;
+use Cro::WebSocket::Internal;
 use Cro::WebSocket::Message;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
@@ -30,19 +31,30 @@ class Cro::WebSocket::Client::Connection {
     has PromiseFactory $.pong;
     has Bool $.closed is rw;
 
-    method new(:$in, :$out) {
+    method new(:$in, :$out, :$body-parsers, :$body-serializers) {
         my $sender = Supplier::Preserving.new;
         my $receiver = Supplier::Preserving.new;
         my $closer = Promise.new;
         my $pong = PromiseFactory.new;
         my $closed = False;
 
+        my @before;
+        unless $body-serializers === Any {
+            unshift @before, SetBodySerializers.new(:$body-serializers);
+        }
+        my @after;
+        unless $body-parsers === Any {
+            push @after, SetBodyParsers.new(:$body-parsers);
+        }
+
         my $pp-in = Cro.compose(
             Cro::WebSocket::FrameParser.new(:!mask-required),
-            Cro::WebSocket::MessageParser.new
+            Cro::WebSocket::MessageParser.new,
+            |@after
         ).transformer($in.map(-> $data { Cro::TCP::Message.new(:$data) }));
 
         my $pp-out = Cro.compose(
+            |@before,
             Cro::WebSocket::MessageSerializer.new,
             Cro::WebSocket::FrameSerializer.new(:mask)
         ).transformer($sender.Supply);
@@ -87,7 +99,6 @@ class Cro::WebSocket::Client::Connection {
         $!sender.emit($m);
     }
     multi method send($m) {
-        die 'Expecting message-like type, $m was sent' unless $m ~~ Str|Blob|Supply;
         self.send(Cro::WebSocket::Message.new($m));
     }
 

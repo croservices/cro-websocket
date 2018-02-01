@@ -1,53 +1,13 @@
 use Base64;
 use Digest::SHA1::Native;
-use Cro::BodyParserSelector;
-use Cro::BodySerializerSelector;
 use Cro::HTTP::Router;
-use Cro::Transform;
 use Cro::TCP;
 use Cro::WebSocket::FrameParser;
-use Cro::WebSocket::Handler;
 use Cro::WebSocket::FrameSerializer;
+use Cro::WebSocket::Handler;
+use Cro::WebSocket::Internal;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
-
-my class SetBodyParsers does Cro::Transform {
-    has $!selector;
-
-    method BUILD(:$body-parsers --> Nil) {
-        $!selector = Cro::BodyParserSelector::List.new:
-            parsers => $body-parsers.list;
-    }
-
-    method consumes() { Cro::WebSocket::Message }
-    method produces() { Cro::WebSocket::Message }
-
-    method transformer(Supply $in --> Supply) {
-        supply whenever $in {
-            .body-parser-selector = $!selector;
-            .emit;
-        }
-    }
-}
-
-my class SetBodySerializers does Cro::Transform {
-    has $!selector;
-
-    method BUILD(:$body-serializers --> Nil) {
-        $!selector = Cro::BodySerializerSelector::List.new:
-            serializers => $body-serializers.list;
-    }
-
-    method consumes() { Cro::WebSocket::Message }
-    method produces() { Cro::WebSocket::Message }
-
-    method transformer(Supply $in --> Supply) {
-        supply whenever $in {
-            .body-serializer-selector = $!selector;
-            .emit;
-        }
-    }
-}
 
 sub web-socket(&handler, :$json, :$body-parsers is copy,  :$body-serializers is copy) is export {
     my constant $magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

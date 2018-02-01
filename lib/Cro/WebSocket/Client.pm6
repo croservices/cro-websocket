@@ -8,6 +8,8 @@ use Digest::SHA1::Native;
 
 class Cro::WebSocket::Client {
     has $.uri;
+    has $.body-serializers;
+    has $.body-parsers;
 
     method connect($uri = '', :%ca? --> Promise) {
         my $parsed-url;
@@ -45,7 +47,10 @@ class Cro::WebSocket::Client {
                 # No extensions for now
                 # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
                 # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
-                Cro::WebSocket::Client::Connection.new(in => $resp.body-byte-stream, :$out)
+                Cro::WebSocket::Client::Connection.new(
+                    in => $resp.body-byte-stream, :$out,
+                    |(%(:$!body-parsers, :$!body-serializers) with self)
+                )
             } else {
                 die 'Server failed to upgrade web socket connection';
             }
