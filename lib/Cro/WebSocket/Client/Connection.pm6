@@ -139,13 +139,12 @@ class Cro::WebSocket::Client::Connection {
         my $p = $!pong.get-new;
 
         with $timeout {
-            start {
-                await Promise.in($timeout);
+            Promise.in($timeout).then: {
                 unless $p.status ~~ Kept {
                     $p.break;
                 }
             }
-        };
+        }
 
         $!sender.emit(Cro::WebSocket::Message.new(
                              opcode => Cro::WebSocket::Message::Ping,
