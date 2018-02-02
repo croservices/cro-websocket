@@ -100,6 +100,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                             $frame.payload = Blob.new;
                             $expecting = FinOp;
                             emit $frame;
+                            $frame = Cro::WebSocket::Frame.new;
                         } else {
                             if $data.elems >= $length {
                                 my $payload = $data.subbuf(0, $length);
@@ -107,7 +108,9 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                                 $frame.payload = Blob.new: $payload;
                                 $data .= subbuf($length);
                                 $expecting = FinOp;
-                                emit $frame; next if $data.elems > 0;
+                                emit $frame;
+                                $frame = Cro::WebSocket::Frame.new;
+                                next if $data.elems > 0;
                             } else {
                                 $buffer.append: $data;
                             }
