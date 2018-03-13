@@ -46,7 +46,8 @@ END { $http-server.stop() };
 
 # Done testing
 {
-    my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/done';
+    my $client = Cro::WebSocket::Client.new;
+    my $connection = $client.connect: 'http://localhost:3005/done';
 
     await Promise.anyof($connection, Promise.in(5));
     if $connection.status != Kept {
@@ -69,7 +70,8 @@ END { $http-server.stop() };
 
 # Ping testing
 {
-    my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+    my $client = Cro::WebSocket::Client.new;
+    my $connection = $client.connect: 'http://localhost:3005/chat';
 
     await Promise.anyof($connection, Promise.in(5));
     die "Connection timed out" unless $connection;
@@ -90,7 +92,8 @@ END { $http-server.stop() };
 
 # Chat testing
 {
-    my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/chat';
+    my $client = Cro::WebSocket::Client.new;
+    my $connection = $client.connect: 'http://localhost:3005/chat';
 
     await Promise.anyof($connection, Promise.in(5));
     die "Connection timed out" unless $connection;
