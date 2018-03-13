@@ -61,9 +61,10 @@ class Cro::WebSocket::Client {
             my $magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
             my $answer = encode-base64(sha1($key ~ $magic), :str);
 
-            @!headers.push: Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key);
+            my @headers = @!headers;
+            @headers.push: Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key);
 
-            my %options = headers => @!headers.item;
+            my %options = headers => @headers.item;
             %options<body-byte-stream> = $out.Supply;
             my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
             if $resp.status == 101 {
