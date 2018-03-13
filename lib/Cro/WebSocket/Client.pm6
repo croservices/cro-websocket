@@ -12,8 +12,9 @@ class Cro::WebSocket::Client {
     has $.uri;
     has $.body-serializers;
     has $.body-parsers;
+    has Cro::HTTP::Header @.headers;
 
-    submethod BUILD(:$!uri, :$body-serializers, :$body-parsers, :$json --> Nil) {
+    submethod BUILD(:$!uri, :$body-serializers, :$body-parsers, :$json, :@headers --> Nil) {
         if $json {
             if $body-parsers === Any {
                 $!body-parsers = Cro::WebSocket::BodyParser::JSON;
@@ -32,6 +33,12 @@ class Cro::WebSocket::Client {
             $!body-parsers = $body-parsers;
             $!body-serializers = $body-serializers;
         }
+
+        @!headers = (Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
+                     Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
+                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
+                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
+        @!headers.push($_) for @headers;
     }
 
     method connect($uri = '', :%ca? --> Promise) {
@@ -54,12 +61,9 @@ class Cro::WebSocket::Client {
             my $magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
             my $answer = encode-base64(sha1($key ~ $magic), :str);
 
-            my %options = headers => (Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
-                Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
-                Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
-                Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key),
-                Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
+            @!headers.push: Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key);
 
+            my %options = headers => @!headers.item;
             %options<body-byte-stream> = $out.Supply;
             my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
             if $resp.status == 101 {
