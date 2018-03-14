@@ -38,7 +38,7 @@ class Cro::WebSocket::Client {
                     Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol');
-        @!headers.push($_) for @headers;
+        @!headers.append(@headers);
     }
 
     method connect($uri = '', :%ca? --> Promise) {
