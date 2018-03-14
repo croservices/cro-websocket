@@ -34,10 +34,10 @@ class Cro::WebSocket::Client {
             $!body-serializers = $body-serializers;
         }
 
-        @!headers = [Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
-                     Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
-                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
-                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol')];
+        @!headers = Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
+                    Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
+                    Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
+                    Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol');
         @!headers.push($_) for @headers;
     }
 
