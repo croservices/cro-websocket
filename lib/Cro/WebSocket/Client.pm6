@@ -65,7 +65,7 @@ class Cro::WebSocket::Client {
             if $resp.status == 101 {
                 # Headers check;
                 die unless $resp.header('upgrade') eq 'websocket';
-                die unless $resp.header('connection') eq 'Upgrade';
+                die unless $resp.header('connection') ~~ m:i/^Upgrade$/;
                 die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
                 # No extensions for now
                 # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
