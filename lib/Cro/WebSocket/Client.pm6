@@ -62,7 +62,7 @@ class Cro::WebSocket::Client {
             my $answer = encode-base64(sha1($key ~ $magic), :str);
 
             my @headers = do if self {
-                @!headers.clone.push: Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key)
+                flat @!headers, Cro::HTTP::Header.new(name => 'Sec-WebSocket-Key', value => $key)
             } else {
                 (Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
                  Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
