@@ -38,6 +38,16 @@ my $app = route {
             }
         }
     }
+    get -> 'timeout' {
+        web-socket -> $incoming {
+            supply {
+                whenever $incoming  {
+                    sleep(3);
+                    emit("Hello, World!");
+                }
+            }
+        }
+    }
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
@@ -83,8 +93,18 @@ END { $http-server.stop() };
     $ping = $connection.ping('First');
     await Promise.anyof($ping, Promise.in(5));
     ok $ping.status ~~ Kept, 'Ping is recieved';
+}
 
-    $ping = $connection.ping(:0timeout);
+# Timeout testing
+{
+    my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/timeout';
+
+    await Promise.anyof($connection, Promise.in(5));
+    die "Connection timed out" unless $connection;
+
+    $connection .= result;
+
+    my $ping = $connection.ping(:0timeout);
     dies-ok { await $ping }, 'Timeout breaks ping promise';
 }
 
