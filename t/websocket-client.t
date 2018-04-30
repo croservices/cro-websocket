@@ -38,11 +38,22 @@ my $app = route {
             }
         }
     }
+    get -> 'plain' {
+        content 'text/plain', 'Hello';
+    }
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
 $http-server.start();
 END { $http-server.stop() };
+
+
+# Non-Websocket route testing
+{
+    throws-like {
+        Cro::WebSocket::Client.connect('http://localhost:3005/plain').result;
+    }, X::Cro::WebSocket::Client::CannotUpgrade, 'Cannot connect to non-websocket route';
+}
 
 # Done testing
 {
