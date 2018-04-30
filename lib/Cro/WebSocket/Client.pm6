@@ -69,10 +69,10 @@ class Cro::WebSocket::Client {
             my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
             if $resp.status == 101 {
                 # Headers check;
-                unless $resp.header('upgrade') || $resp.header('upgrade') ~~ m:i/'websocket'/ {
+                unless $resp.header('upgrade') && $resp.header('upgrade') ~~ m:i/'websocket'/ {
                     die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "got {$resp.header('upgrade')} for 'upgrade' header");
                 }
-                unless $resp.header('connection') || $resp.header('connection') ~~ m:i/^Upgrade$/ {
+                unless $resp.header('connection') && $resp.header('connection') ~~ m:i/^Upgrade$/ {
                     die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "got {$resp.header('connection')} for 'connection' header");
                 }
                 with $resp.header('Sec-WebSocket-Accept') {
