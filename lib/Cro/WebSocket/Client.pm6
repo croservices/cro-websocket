@@ -8,6 +8,11 @@ use Cro::WebSocket::Client::Connection;
 use Crypt::Random;
 use Digest::SHA1::Native;
 
+class X::Cro::WebSocket::Client::CannotUpgrade is Exception {
+    has $.reason;
+    method message() { "Upgrade to WebSocket failed: $!reason" }
+}
+
 class Cro::WebSocket::Client {
     has $.uri;
     has $.body-serializers;
@@ -76,9 +81,17 @@ class Cro::WebSocket::Client {
             my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
             if $resp.status == 101 {
                 # Headers check;
-                die unless $resp.header('upgrade') eq 'websocket';
-                die unless $resp.header('connection') ~~ m:i/^Upgrade$/;
-                die unless $resp.header('Sec-WebSocket-Accept').trim eq $answer;
+                unless $resp.header('upgrade') && $resp.header('upgrade') ~~ m:i/'websocket'/ {
+                    die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "got {$resp.header('upgrade')} for 'upgrade' header");
+                }
+                unless $resp.header('connection') && $resp.header('connection') ~~ m:i/^Upgrade$/ {
+                    die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "got {$resp.header('connection')} for 'connection' header");
+                }
+                with $resp.header('Sec-WebSocket-Accept') {
+                    die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "wanted '$answer', but got $_") unless .trim eq $answer;
+                } else {
+                    die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "no Sec-WebSocket-Accept header included");
+                }
                 # No extensions for now
                 # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
                 # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
@@ -87,7 +100,7 @@ class Cro::WebSocket::Client {
                     |(%(:$!body-parsers, :$!body-serializers) with self)
                 )
             } else {
-                die 'Server failed to upgrade web socket connection';
+                die X::Cro::WebSocket::Client::CannotUpgrade.new(reason => "Response status is {$resp.status}, not 101");
             }
         }
     }
