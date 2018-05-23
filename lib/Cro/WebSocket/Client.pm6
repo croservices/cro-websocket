@@ -18,7 +18,10 @@ class Cro::WebSocket::Client {
     has $.body-serializers;
     has $.body-parsers;
 
-    submethod BUILD(:$!uri, :$body-serializers, :$body-parsers, :$json --> Nil) {
+    submethod BUILD(:$uri, :$body-serializers, :$body-parsers, :$json --> Nil) {
+        with $uri {
+            $!uri = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
+        }
         if $json {
             if $body-parsers === Any {
                 $!body-parsers = Cro::WebSocket::BodyParser::JSON;
@@ -41,12 +44,16 @@ class Cro::WebSocket::Client {
 
     method connect($uri = '', :%ca? --> Promise) {
         my $parsed-url;
-        if self && self.uri {
-            $parsed-url = Cro::Uri.parse($uri ~~ Cro::Uri
-                                         ?? self.uri ~ $uri.Str
-                                         !! self.uri ~ $uri);
+        if self && $!uri {
+            $parsed-url = $uri ?? $!uri.add($uri) !! $!uri;
         } else {
             $parsed-url = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
+        }
+        if $parsed-url.scheme eq 'ws' {
+            $parsed-url = Cro::Uri.parse('http' ~ $parsed-url.Str.substr(2));
+        }
+        elsif $parsed-url.scheme eq 'wss' {
+            $parsed-url = Cro::Uri.parse('https' ~ $parsed-url.Str.substr(3));
         }
 
         start {
