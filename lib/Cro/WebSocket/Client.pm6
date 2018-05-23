@@ -48,9 +48,6 @@ class Cro::WebSocket::Client {
         } else {
             $parsed-url = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
         }
-        if $parsed-url.scheme eq 'wss' && !%ca {
-            die "Cannot connect through wss without certificate specified";
-        }
 
         start {
             my $out  = Supplier::Preserving.new;
