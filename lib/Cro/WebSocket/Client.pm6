@@ -63,7 +63,8 @@ class Cro::WebSocket::Client {
                 Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
 
             %options<body-byte-stream> = $out.Supply;
-            my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
+            %options<http> = '1.1';
+            my $resp = await Cro::HTTP::Client.get($parsed-url, |%options, :%ca);
             if $resp.status == 101 {
                 # Headers check;
                 unless $resp.header('upgrade') && $resp.header('upgrade') ~~ m:i/'websocket'/ {
