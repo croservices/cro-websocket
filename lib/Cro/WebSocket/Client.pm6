@@ -20,6 +20,9 @@ class Cro::WebSocket::Client {
     has Cro::HTTP::Header @.headers;
 
     submethod BUILD(:$!uri, :$body-serializers, :$body-parsers, :$json, :@headers --> Nil) {
+        with $uri {
+            $!uri = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
+        }
         if $json {
             if $body-parsers === Any {
                 $!body-parsers = Cro::WebSocket::BodyParser::JSON;
@@ -48,15 +51,16 @@ class Cro::WebSocket::Client {
 
     method connect($uri = '', :%ca? --> Promise) {
         my $parsed-url;
-        if self && self.uri {
-            $parsed-url = Cro::Uri.parse($uri ~~ Cro::Uri
-                                         ?? self.uri ~ $uri.Str
-                                         !! self.uri ~ $uri);
+        if self && $!uri {
+            $parsed-url = $uri ?? $!uri.add($uri) !! $!uri;
         } else {
             $parsed-url = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
         }
-        if $parsed-url.scheme eq 'wss' && !%ca {
-            die "Cannot connect through wss without certificate specified";
+        if $parsed-url.scheme eq 'ws' {
+            $parsed-url = Cro::Uri.parse('http' ~ $parsed-url.Str.substr(2));
+        }
+        elsif $parsed-url.scheme eq 'wss' {
+            $parsed-url = Cro::Uri.parse('https' ~ $parsed-url.Str.substr(3));
         }
 
         start {
@@ -78,7 +82,8 @@ class Cro::WebSocket::Client {
 
             my %options = headers => @headers;
             %options<body-byte-stream> = $out.Supply;
-            my $resp = await Cro::HTTP::Client.get($parsed-url, %options, :%ca);
+            %options<http> = '1.1';
+            my $resp = await Cro::HTTP::Client.get($parsed-url, |%options, :%ca);
             if $resp.status == 101 {
                 # Headers check;
                 unless $resp.header('upgrade') && $resp.header('upgrade') ~~ m:i/'websocket'/ {

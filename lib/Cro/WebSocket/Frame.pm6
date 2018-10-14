@@ -8,4 +8,8 @@ class Cro::WebSocket::Frame does Cro::Message {
     has Bool $.fin is rw;
     has Opcode $.opcode is rw;
     has Blob $.payload is rw;
+
+    method trace-output(--> Str) {
+        "WebSocket Frame - {$!opcode // 'Opcode unset'}\n" ~ self!trace-blob($!payload).indent(2);
+    }
 }
