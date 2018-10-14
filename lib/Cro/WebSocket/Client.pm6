@@ -19,7 +19,7 @@ class Cro::WebSocket::Client {
     has $.body-parsers;
     has Cro::HTTP::Header @.headers;
 
-    submethod BUILD(:$!uri, :$body-serializers, :$body-parsers, :$json, :@headers --> Nil) {
+    submethod BUILD(:$uri, :$body-serializers, :$body-parsers, :$json, :@headers --> Nil) {
         with $uri {
             $!uri = $uri ~~ Cro::Uri ?? $uri !! Cro::Uri.parse($uri);
         }
