@@ -39,9 +39,18 @@ class Cro::WebSocket::Handler does Cro::Transform {
                     True
                 }
             }
-            my $block = &!block.count == 1
+            my $block-result;
+            try {
+                $block-result = &!block.count == 1
                         ?? &!block($block-feed)
                         !! &!block($block-feed, $on-close);
+                CATCH {
+                    default {
+                        my $exception = $_;
+                        $block-result = supply die $exception;
+                    }
+                }
+            }
 
             sub close(Bool $end, Blob $code) {
                 unless $end {
@@ -54,7 +63,7 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 }
             }
 
-            whenever $block {
+            whenever $block-result {
                 when Cro::WebSocket::Message {
                     emit $_;
                     if .opcode == Cro::WebSocket::Message::Close {
@@ -71,6 +80,7 @@ class Cro::WebSocket::Handler does Cro::Transform {
                     close($end, Blob.new([3, 232])); # bytes of 1000
                 }
                 QUIT {
+                    .note;
                     close($end, Blob.new([3, 343])); # bytes of 1011
                 }
             }
