@@ -113,6 +113,7 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                                 next if $data.elems > 0;
                             } else {
                                 $buffer.append: $data;
+                                last;
                             }
                         }
                     }
