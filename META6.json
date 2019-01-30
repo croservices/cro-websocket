@@ -1,7 +1,7 @@
 {
     "perl"          : "6.*",
     "name"          : "Cro::WebSocket",
-    "version"       : "0.8.0",
+    "version"       : "0.8.0.1",
     "description"   : "WebSocket client, and WebSocket support in the Cro HTTP router.",
     "tags"          : [ "WebSocket", "Client", "Server" ],
     "authors"       : [ "Jonathan Worthington <jnthn@jnthn.net>" ],
