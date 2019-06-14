@@ -7,7 +7,11 @@ use Cro::HTTP::Router::WebSocket;
 use JSON::Fast;
 use Test;
 
-my $done = Promise.new;
+constant %ca := { ca-file => 't/certs-and-keys/ca-crt.pem' };
+constant %key-cert := {
+    private-key-file => 't/certs-and-keys/server-key.pem',
+    certificate-file => 't/certs-and-keys/server-crt.pem'
+};
 
 my $app = route {
     get -> 'chat' {
@@ -44,8 +48,11 @@ my $app = route {
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
-$http-server.start();
-END { $http-server.stop() };
+my $https-server = Cro::HTTP::Server.new(port => 3006, application => $app, tls => %key-cert);
+$http-server.start;
+$https-server.start;
+END { $http-server.stop };
+END { $https-server.stop }
 
 
 # Non-Websocket route testing
@@ -162,6 +169,19 @@ END { $http-server.stop() };
         is $body<added>, 42, 'Correct hash content (2)';
         is $body<updated>, 1000, 'Correct hash content (3)';
     }
+}
+
+# WS / WSS handling
+{
+    my $conn = await Cro::WebSocket::Client.connect('ws://localhost:3005/json');
+    ok $conn, 'ws schema is handled';
+    $conn.close;
+    $conn = await Cro::WebSocket::Client.connect('wss://localhost:3006/json', :%ca);
+    ok $conn, 'wss schema is handled with %ca passed';
+    $conn.close;
+    dies-ok {
+        await Cro::WebSocket::Client.connect('wss://localhost:3006/json');
+    }, 'wss schema fails without %ca argument passed';
 }
 
 done-testing;
