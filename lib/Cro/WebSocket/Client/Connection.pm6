@@ -27,9 +27,9 @@ class Cro::WebSocket::Client::Connection {
     has Supplier $.out;
     has Supplier $.sender;
     has Supply $.receiver;
-    has Promise $.closer is rw;
+    has Promise $.closer;
     has PromiseFactory $.pong;
-    has Bool $.closed is rw;
+    has Bool $.closed;
 
     method new(:$in, :$out, :$body-parsers, :$body-serializers) {
         my $sender = Supplier::Preserving.new;
@@ -59,7 +59,7 @@ class Cro::WebSocket::Client::Connection {
             Cro::WebSocket::FrameSerializer.new(:mask)
         ).transformer($sender.Supply);
 
-        my $instance = self.bless:
+        my Cro::WebSocket::Client::Connection $instance = self.bless:
             :$in, :$out, :$sender, receiver => $receiver.Supply, :$closer, :$pong, :$closed;
 
         $pp-in.tap:
@@ -78,16 +78,26 @@ class Cro::WebSocket::Client::Connection {
                         $pong.reset;
                     }
                     when $_.opcode == Cro::WebSocket::Message::Close {
-                        $instance.closer.keep($_);
+                        .keep($_) with $instance.closer;
                         $instance.close(1000);
                         $receiver.done;
                     }
                 }
             },
-            quit => { $receiver.quit($_) };
+            done => {
+                $instance!set-closed();
+            },
+            quit => {
+                $instance!set-closed();
+                $receiver.quit($_);
+            };
         $pp-out.tap: { $out.emit: .data }, quit => { $out.quit($_) };
 
         $instance;
+    }
+
+    method !set-closed(--> Nil) {
+        $!closed = True;
     }
 
     method messages(--> Supply) {
