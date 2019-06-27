@@ -7,6 +7,11 @@ use Cro::WebSocket::Message;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
 
+class X::Cro::WebSocket::Client::Closed is Exception {
+    has Str $.operation is required;
+    method message() { "Cannot $!operation on a closed WebSocket connection" }
+}
+
 my class PromiseFactory {
     has @.promises;
 
@@ -97,7 +102,7 @@ class Cro::WebSocket::Client::Connection {
     }
 
     multi method send(Cro::WebSocket::Message $m --> Nil) {
-        die if $!closed;
+        self!ensure-open('send');
         $!sender.emit($m);
     }
     multi method send($m) {
@@ -138,6 +143,8 @@ class Cro::WebSocket::Client::Connection {
     }
 
     method ping($data?, Int :$timeout --> Promise) {
+        self!ensure-open('ping');
+
         my $p = $!pong.get-new;
 
         with $timeout {
@@ -156,5 +163,9 @@ class Cro::WebSocket::Client::Connection {
             }));
 
         $p;
+    }
+
+    method !ensure-open($operation --> Nil) {
+        die X::Cro::WebSocket::Client::Closed.new(:$operation) if $!closed;
     }
 }
