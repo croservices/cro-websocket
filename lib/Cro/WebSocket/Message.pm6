@@ -20,6 +20,7 @@ class Cro::WebSocket::Message does Cro::MessageWithBody {
                 Cro::WebSocket::BodySerializer::Text,
                 Cro::WebSocket::BodySerializer::Binary
             ];
+    has Promise $.serialization-outcome is rw;
 
     multi method new(Supply $body-byte-stream) {
         self.bless: :opcode(Binary), :fragmented, :$body-byte-stream;

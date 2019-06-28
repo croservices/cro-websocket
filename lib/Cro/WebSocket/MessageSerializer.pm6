@@ -21,14 +21,28 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
                     my $opcode = $first
                                  ?? Cro::WebSocket::Frame::Opcode($current.opcode.value)
                                  !! Cro::WebSocket::Frame::Continuation;
-                    $first = False;
+                    if $first {
+                        .keep(True) with $current.serialization-outcome;
+                        $first = False;
+                    }
                     emit Cro::WebSocket::Frame.new(fin => !$current.fragmented, :$opcode, :$payload);
                     LAST {
                         emit Cro::WebSocket::Frame.new(fin => True,
                                                        opcode => Cro::WebSocket::Frame::Continuation,
                                                        payload => Blob.new()) if $current.fragmented;
-                        $first = True; $current = Nil;
+                        if $first {
+                            .keep(True) with $current.serialization-outcome;
+                        }
+                        $first = True;
+                        $current = Nil;
                         set-current;
+                    }
+                }
+                CATCH {
+                    default {
+                        with $current.serialization-outcome -> $so {
+                            $so.break($_);
+                        }
                     }
                 }
             }

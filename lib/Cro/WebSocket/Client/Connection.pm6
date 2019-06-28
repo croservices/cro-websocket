@@ -103,7 +103,9 @@ class Cro::WebSocket::Client::Connection {
 
     multi method send(Cro::WebSocket::Message $m --> Nil) {
         self!ensure-open('send');
+        my $serialized = $m.serialization-outcome //= Promise.new;
         $!sender.emit($m);
+        await $serialized;
     }
     multi method send($m) {
         self.send(Cro::WebSocket::Message.new($m));
