@@ -89,6 +89,7 @@ class Cro::WebSocket::Client::Connection {
             },
             done => {
                 $!closed = True;
+                $receiver.done;
             },
             quit => {
                 $!closed = True;
