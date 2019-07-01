@@ -122,6 +122,9 @@ END { $https-server.stop }
                                 });
 
     $connection.send('Hello');
+    throws-like { $connection.send(5) },
+            X::Cro::BodySerializerSelector::NoneApplicable,
+            'If send resulted in error, an exception is thrown';
 
     await Promise.anyof($p, Promise.in(5));
 
@@ -182,6 +185,23 @@ END { $https-server.stop }
     dies-ok {
         await Cro::WebSocket::Client.connect('wss://localhost:3006/json');
     }, 'wss schema fails without %ca argument passed';
+}
+
+{
+    my $http-server = Cro::HTTP::Server.new(port => 3010, application => $app);
+    $http-server.start;
+
+    my $connection = await Cro::WebSocket::Client.connect: 'http://localhost:3010/chat';
+    $http-server.stop;
+
+    react {
+        whenever $connection.messages {
+            await(.body).print;
+            LAST {
+                pass "Did not hang when the server is closed";
+            }
+        }
+    }
 }
 
 done-testing;
