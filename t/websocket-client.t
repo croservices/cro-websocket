@@ -198,10 +198,32 @@ END { $https-server.stop }
         whenever $connection.messages {
             await(.body).print;
             LAST {
-                pass "Did not hang when the server is closed";
+                pass "Client messages Supply did not hang when the server is closed";
             }
         }
     }
+}
+
+{
+    my $websocket-block-close = Promise.new;
+    my $app = route {
+        get -> 'chat' {
+            web-socket -> $incoming {
+                supply {
+                    whenever $incoming -> $message {
+                    }
+                    CLOSE { $websocket-block-close.keep }
+                }
+            }
+        }
+    }
+
+    my $hello-http-server = Cro::HTTP::Server.new(port => 3012, application => $app);
+    $hello-http-server.start;
+    my $connection = await Cro::WebSocket::Client.connect: 'http://localhost:3012/chat';
+    $hello-http-server.stop;
+    await Promise.anyof(Promise.in(3), $websocket-block-close);
+    is $websocket-block-close.status, Kept, 'Incoming supply block of server was closed';
 }
 
 done-testing;
