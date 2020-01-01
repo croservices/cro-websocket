@@ -104,6 +104,22 @@ test-example $message,
              *.payload == @random-data,
              split => True;
 
+@random-data = 255.rand.Int xx 32768;
+$message = Buf.new([0x82, 0x7E, 0x80, 0x00, |@random-data]);
+
+test-example $message,
+             False, '32 KiB binary message in a single unmasked frame',
+             *.fin == True,
+             *.opcode == Cro::WebSocket::Frame::Binary,
+             *.payload == @random-data;
+
+test-example $message,
+             False, '32 KiB binary message in a single unmasked frame',
+             *.fin == True,
+             *.opcode == Cro::WebSocket::Frame::Binary,
+             *.payload == @random-data,
+             split => True;
+
 @random-data = 255.rand.Int xx 65536;
 $message = Buf.new([0x82, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, |@random-data]);
 
