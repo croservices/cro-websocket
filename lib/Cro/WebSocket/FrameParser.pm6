@@ -65,7 +65,6 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         if $data.elems < 2 {
                             $buffer.append: $data; last;
                         } else {
-                            die 'Length cannot be negative' if self!check-first-bit($data[0]);
                             $length = ($data[0] +< 8) +| $data[1];
                             $data .= subbuf(2);
                             $expecting = MaskKey; next;

@@ -69,6 +69,13 @@ test-example Cro::WebSocket::Frame.new(fin => True,
                                        payload => Blob.new(@random-data)),
              False, '256 bytes binary message in a single unmasked frame';
 
+@random-data = 255.rand.Int xx 32768;
+
+test-example Cro::WebSocket::Frame.new(fin => True,
+                                       opcode => Cro::WebSocket::Frame::Binary,
+                                       payload => Blob.new(@random-data)),
+             False, '32 KiB binary message in a single unmasked frame';
+
 @random-data = 255.rand.Int xx 65536;
 
 test-example Cro::WebSocket::Frame.new(fin => True,
