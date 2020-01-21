@@ -2,6 +2,12 @@ use Cro::TCP;
 use Cro::WebSocket::Frame;
 use Cro::Transform;
 
+class X::Cro::WebSocket::PayloadLengthTooLarge is Exception {
+    method message() {
+        "WebSocket frame 8-byte extended payload lengths cannot have the high bit set"
+    }
+}
+
 class X::Cro::WebSocket::IncorrectMaskFlag is Exception {
     method message() {
         "Mask flag of the FrameParser instance and the current frame flag differ"
@@ -20,112 +26,75 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
 
     method transformer(Supply:D $in) {
         supply {
-            my enum Expecting <FinOp MaskLength Length2 Length3 MaskKey Payload>;
+            my Buf $buffer .= new;
 
-            my Expecting $expecting = FinOp;
-            my Bool $mask-flag;
-            my Buf $mask;
-            my $frame = Cro::WebSocket::Frame.new;
-            my Buf $buffer = Buf.new;
-            my Int $length;
+            my sub emit-frame($mask-flag, $payload-len, $pos) {
+                my $frame     = Cro::WebSocket::Frame.new;
+                my $fin-op    = $buffer[0];
+                $frame.fin    = ?($fin-op +& 128);
+                $frame.opcode = Cro::WebSocket::Frame::Opcode($fin-op +& 15);
+
+                if $mask-flag {
+                    my $mask       = $buffer.subbuf($pos, 4);
+                    $frame.payload = $buffer.subbuf($pos + 4, $payload-len)
+                                     ~^ Blob.allocate($payload-len, $mask);
+                }
+                else {
+                    $frame.payload = $buffer.subbuf($pos, $payload-len);
+                }
+
+                emit $frame;
+            }
 
             whenever $in -> Cro::TCP::Message $packet {
-                my Blob $data = $packet.data;
-                $data = $buffer ~ $data;
-                $buffer = Buf.new;
+                $buffer ~= $packet.data;
 
+                # Loop in case TCP message contained data from multiple frames
                 loop {
-                    last if $data eq Blob.new && $expecting !== Payload|MaskKey;
-                    $_ = $expecting;
+                    # Smallest valid frame is 2 bytes: fin-op and mask-len
+                    last if (my $buf-len = $buffer.elems) < 2;
 
-                    when FinOp {
-                        $frame.fin = self!check-first-bit($data[0]); # Check first bit.
-                        $frame.opcode = Cro::WebSocket::Frame::Opcode($data[0] +& 15); # Last 4 bits.
-                        $data .= subbuf(1);
-                        $expecting = MaskLength;
-                        next;
+                    my $mask-len  = $buffer[1];
+                    my $mask-flag = ?($mask-len +& 128);
+                    die X::Cro::WebSocket::IncorrectMaskFlag.new
+                        if $!mask-required != $mask-flag;
+                    my $base-len  =   $mask-len +& 127;
+
+                    if $base-len < 126 {
+                        my $min-len = 2 + $mask-flag * 4 + $base-len;
+                        last if $buf-len < $min-len;
+
+                        emit-frame($mask-flag, $base-len, 2);
+                        $buffer .= subbuf($min-len);
                     }
-                    when MaskLength {
-                        last if $data.elems < 1;
-                        $mask-flag = self!check-first-bit($data[0]);
-                        die X::Cro::WebSocket::IncorrectMaskFlag.new if $!mask-required !== $mask-flag;
-                        my $baselen = $data[0] +& 127;
-                        # Drop baselen byte;
-                        $data .= subbuf(1);
-                        if $baselen < 126 {
-                            $length = $baselen;
-                            $expecting = MaskKey; next;
-                        } elsif $baselen < 127 {
-                            $expecting = Length2; next;
-                        } else {
-                            $expecting = Length3; next;
-                        }
+                    elsif $base-len == 126 {
+                        last if $buf-len < 4;
+
+                        my $payload-len = $buffer.read-uint16(2, BigEndian);
+                        my $min-len     = 4 + $mask-flag * 4 + $payload-len;
+                        last if $buf-len < $min-len;
+
+                        emit-frame($mask-flag, $payload-len, 4);
+                        $buffer .= subbuf($min-len);
                     }
-                    when Length2 {
-                        if $data.elems < 2 {
-                            $buffer.append: $data; last;
-                        } else {
-                            $length = ($data[0] +< 8) +| $data[1];
-                            $data .= subbuf(2);
-                            $expecting = MaskKey; next;
-                        }
-                    }
-                    when Length3 {
-                        if $data.elems < 8 {
-                            $buffer.append: $data; last;
-                        } else {
-                            die 'Length cannot be negative' if self!check-first-bit($data[0]);
-                            $length = 0;
-                            loop (my $i = 0; $i < 8; $i++) {
-                                $length = $length +< 8 +| $data[$i];
-                            };
-                            $data .= subbuf(8);
-                            $expecting = MaskKey; next;
-                        }
-                    }
-                    when MaskKey {
-                        if $mask-flag {
-                            if $data.elems < 4 {
-                                $buffer.append: $data; last;
-                            }
-                            $mask = $data.subbuf(0,4);
-                            $data .= subbuf(4);
-                        }
-                        $expecting = Payload;
-                        next;
-                    }
-                    when Payload {
-                        if $length == 0 {
-                            $frame.payload = Blob.new;
-                            $expecting = FinOp;
-                            emit $frame;
-                            $frame = Cro::WebSocket::Frame.new;
-                        } else {
-                            if $data.elems >= $length {
-                                my $payload = $data.subbuf(0, $length);
-                                $payload = $payload ~^ Blob.allocate($payload.elems, $mask)
-                                    if $mask-flag;
-                                $frame.payload = Blob.new: $payload;
-                                $data .= subbuf($length);
-                                $expecting = FinOp;
-                                emit $frame;
-                                $frame = Cro::WebSocket::Frame.new;
-                                next if $data.elems > 0;
-                            } else {
-                                $buffer.append: $data;
-                                last;
-                            }
-                        }
+                    else {
+                        last if $buf-len < 10;
+                        die X::Cro::WebSocket::PayloadLengthTooLarge.new
+                            if $buffer[2] +& 128;
+
+                        my $payload-len = $buffer.read-uint64(2, BigEndian);
+                        my $min-len     = 10 + $mask-flag * 4 + $payload-len;
+                        last if $buf-len < $min-len;
+
+                        emit-frame($mask-flag, $payload-len, 10);
+                        $buffer .= subbuf($min-len);
                     }
                 }
+
                 LAST {
-                    die X::Cro::WebSocket::Disconnect.new if $expecting != FinOp;
+                    die X::Cro::WebSocket::Disconnect.new if $buffer;
                 }
             }
         }
-    }
-
-    method !check-first-bit(Int $byte --> Bool) {
-        $byte +& (1 +< 7) != 0
     }
 }
