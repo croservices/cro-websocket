@@ -103,7 +103,8 @@ class Cro::WebSocket::FrameParser does Cro::Transform {
                         } else {
                             if $data.elems >= $length {
                                 my $payload = $data.subbuf(0, $length);
-                                $payload = $mask-flag ?? Blob.new((@$payload Z+^ (@$mask xx *).flat)) !! $payload;
+                                $payload = $payload ~^ Blob.allocate($payload.elems, $mask)
+                                    if $mask-flag;
                                 $frame.payload = Blob.new: $payload;
                                 $data .= subbuf($length);
                                 $expecting = FinOp;
