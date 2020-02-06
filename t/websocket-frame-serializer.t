@@ -19,7 +19,12 @@ sub test-example($frame, $mask, $desc) {
     my $complete = Promise.new;
     $serializer.transformer($fake-in-s.Supply).schedule-on($*SCHEDULER).tap: -> $message {
         $parser.transformer($fake-in-p.Supply).schedule-on($*SCHEDULER).tap: -> $newframe {
-            is-deeply $newframe, $frame, $desc;
+            subtest $desc, {
+                is $newframe.fin,    $frame.fin,    'fin flag';
+                is $newframe.opcode, $frame.opcode, 'opcode';
+                ok $newframe.payload ~~ Blob,       'payload type';
+                is-deeply Blob.new($newframe.payload), $frame.payload, 'payload contents';
+            }
             $complete.keep;
         }
         $fake-in-p.emit($message);
