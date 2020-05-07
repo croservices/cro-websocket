@@ -44,8 +44,10 @@ class Cro::WebSocket::Client {
 
         @!headers = Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
                     Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
-                    Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13'),
-                    Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol');
+                    Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13');
+        without @headers.first(*.name.lc eq 'sec-websocket-protocol') {
+            @!headers.append(Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
+        }
         @!headers.append(@headers);
     }
 
