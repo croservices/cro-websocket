@@ -32,6 +32,7 @@ class Cro::WebSocket::Client::Connection {
     has Supplier $.out;
     has Supplier $.sender;
     has Supply $.receiver;
+    has Supplier $!closing;
     has Promise $.closer;
     has PromiseFactory $.pong;
     has Bool $.closed;
@@ -88,16 +89,23 @@ class Cro::WebSocket::Client::Connection {
                 }
             },
             done => {
+                $!closing.?emit("done");
                 $!closed = True;
                 $receiver.done;
             },
             quit => {
+                $!closing.?emit("quit");
                 $!closed = True;
                 $receiver.quit($_);
             };
         $pp-out.tap: { $!out.emit: .data }, quit => { $!out.quit($_) };
     }
 
+    method closing(--> Supply)
+    {
+        $!closing //= Supplier.new;
+        $!closing.Supply;
+    }
     method messages(--> Supply) {
         $!receiver;
     }
@@ -113,9 +121,10 @@ class Cro::WebSocket::Client::Connection {
     }
 
     method close($code = 1000, :$timeout --> Promise) {
-        # Double closing has no effect;
+        # Double  has no effect;
         return if $!closed;
         $!closed = True;
+        $!closing.?emit("close");
         my $p = Promise.new;
         my &body = -> $_ { supply { emit Blob.new($_ +& 0xFF, ($_ +> 8) +& 0xFF); } };
 
