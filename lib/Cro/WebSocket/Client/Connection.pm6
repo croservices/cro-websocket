@@ -153,7 +153,8 @@ class Cro::WebSocket::Client::Connection {
         with $timeout {
             Promise.in($timeout).then: {
                 unless $p.status ~~ Kept {
-                    $p.break;
+                    # We race with a pong thus the try.
+                    try $p.break;
                 }
             }
         }
