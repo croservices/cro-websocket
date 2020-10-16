@@ -8,7 +8,7 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
 
     method transformer(Supply:D $in) {
         supply {
-            my @order = ();
+            my @order;
             my $current = Nil;
             my Bool $first = True;
 
