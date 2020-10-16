@@ -52,7 +52,7 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 }
             }
 
-            sub close(Bool $end, Blob $code) {
+            sub close(Blob $code) {
                 unless $end {
                     emit Cro::WebSocket::Message.new(
                         opcode => Cro::WebSocket::Message::Close,
@@ -77,11 +77,11 @@ class Cro::WebSocket::Handler does Cro::Transform {
                 }
 
                 LAST {
-                    close($end, Blob.new([3, 232])); # bytes of 1000
+                    close(Blob.new([3, 232])); # bytes of 1000
                 }
                 QUIT {
                     note "A WebSocket handler crashed: " ~ .gist;
-                    close($end, Blob.new([3, 343])); # bytes of 1011
+                    close(Blob.new([3, 343])); # bytes of 1011
                 }
             }
 
