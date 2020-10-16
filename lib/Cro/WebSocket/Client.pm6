@@ -51,7 +51,7 @@ class Cro::WebSocket::Client {
         @!headers.append(@headers);
     }
 
-    method connect($uri = '', :%ca? --> Promise) {
+    method connect($uri = '', :%ca --> Promise) {
         my $parsed-url;
         if self && $!uri {
             $parsed-url = $uri ?? $!uri.add($uri) !! $!uri;
