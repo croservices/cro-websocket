@@ -88,14 +88,21 @@ class Cro::WebSocket::Client::Connection {
                 }
             },
             done => {
-                $!closed = True;
+                self!unexpected-close();
                 $receiver.done;
             },
             quit => {
-                $!closed = True;
+                self!unexpected-close();
                 $receiver.quit($_);
             };
         $pp-out.tap: { $!out.emit: .data }, quit => { $!out.quit($_) };
+    }
+
+    method !unexpected-close(--> Nil) {
+        unless $!closed {
+            $!closed = True;
+            try $!closer.keep(self!unexpected-close-message());
+        }
     }
 
     method messages(--> Supply) {
@@ -117,12 +124,10 @@ class Cro::WebSocket::Client::Connection {
         return if $!closed;
         $!closed = True;
         my $p = Promise.new;
-        my &body = -> $_ { supply { emit Blob.new($_ +& 0xFF, ($_ +> 8) +& 0xFF); } };
-
         start {
             my $message = Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
                                                       fragmented => False,
-                                                      body-byte-stream => &body($code));
+                                                      body-byte-stream => body($code));
             my $real-timeout = $timeout // 2;
             if $real-timeout == False || $real-timeout == 0 {
                 $!sender.emit: $message;
@@ -135,14 +140,21 @@ class Cro::WebSocket::Client::Connection {
                 if $!closer.status == Kept {
                     $p.keep($!closer.result);
                 } else {
-                    my $close-m = Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
-                                                              fragmented => False,
-                                                              body-byte-stream => &body(1006));
-                    $p.break($close-m);
+                    $p.break(self!unexpected-close-message());
                 }
             }
         }
         $p;
+    }
+
+    method !unexpected-close-message() {
+        Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Close,
+                fragmented => False,
+                body-byte-stream => body(1006))
+    }
+
+    sub body($code) {
+        supply { emit Blob.new($code +& 0xFF, ($code +> 8) +& 0xFF); }
     }
 
     method ping($data?, Int :$timeout --> Promise) {
