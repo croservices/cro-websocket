@@ -81,7 +81,7 @@ class Cro::WebSocket::Client::Connection {
                         $!pong.reset;
                     }
                     when $_.opcode == Cro::WebSocket::Message::Close {
-                        .keep($_) with $!closer;
+                        $!closer.keep($_) if $!closer.defined;
                         self.close(1000);
                         $receiver.done;
                     }
