@@ -6,13 +6,14 @@ use Cro::WebSocket::Internal;
 use Cro::WebSocket::Message;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
+use OO::Monitors;
 
 class X::Cro::WebSocket::Client::Closed is Exception {
     has Str $.operation is required;
     method message() { "Cannot $!operation on a closed WebSocket connection" }
 }
 
-my class PromiseFactory {
+my monitor PromiseFactory {
     has @.promises;
 
     method get-new(--> Promise) {
@@ -21,8 +22,15 @@ my class PromiseFactory {
         $p;
     }
 
-    method reset() {
-        @!promises.map({.keep});
+    method keep-all() {
+        # Maybe racing with timeout, thus the try
+        @!promises.map({ try .keep });
+        @!promises = ();
+    }
+
+    method break-all() {
+        # Maybe racing with timeout, thus the try
+        @!promises.map({ try .break('Connection lost') });
         @!promises = ();
     }
 }
@@ -78,10 +86,11 @@ class Cro::WebSocket::Client::Connection {
                         $!sender.emit: $m;
                     }
                     when $_.opcode == Cro::WebSocket::Message::Pong {
-                        $!pong.reset;
+                        $!pong.keep-all;
                     }
                     when $_.opcode == Cro::WebSocket::Message::Close {
                         $!closer.keep($_) if $!closer.defined;
+                        $!pong.break-all;
                         self.close(1000);
                         $receiver.done;
                     }
@@ -99,6 +108,7 @@ class Cro::WebSocket::Client::Connection {
     }
 
     method !unexpected-close(--> Nil) {
+        $!pong.break-all;
         unless $!closed {
             $!closed = True;
             try $!closer.keep(self!unexpected-close-message());

@@ -1,29 +1,41 @@
 {
-    "perl"          : "6.*",
-    "name"          : "Cro::WebSocket",
-    "version"       : "0.8.3",
-    "description"   : "WebSocket client, and WebSocket support in the Cro HTTP router.",
-    "tags"          : [ "WebSocket", "Client", "Server" ],
-    "authors"       : [ "Jonathan Worthington <jnthn@jnthn.net>" ],
-    "license"       : "Artistic-2.0",
-    "depends"       : [  "Cro::HTTP", "Base64", "Digest::SHA1::Native", "Crypt::Random",
-                         "JSON::Fast" ],
-    "provides"      : {
-        "Cro::HTTP::Router::WebSocket": "lib/Cro/HTTP/Router/WebSocket.pm6",
-        "Cro::WebSocket::BodyParsers": "lib/Cro/WebSocket/BodyParsers.pm6",
-        "Cro::WebSocket::BodySerializers": "lib/Cro/WebSocket/BodySerializers.pm6",
-        "Cro::WebSocket::Client": "lib/Cro/WebSocket/Client.pm6",
-        "Cro::WebSocket::Client::Connection": "lib/Cro/WebSocket/Client/Connection.pm6",
-        "Cro::WebSocket::Frame": "lib/Cro/WebSocket/Frame.pm6",
-        "Cro::WebSocket::FrameParser": "lib/Cro/WebSocket/FrameParser.pm6",
-        "Cro::WebSocket::FrameSerializer": "lib/Cro/WebSocket/FrameSerializer.pm6",
-        "Cro::WebSocket::Handler": "lib/Cro/WebSocket/Handler.pm6",
-        "Cro::WebSocket::Internal": "lib/Cro/WebSocket/Internal.pm6",
-        "Cro::WebSocket::Message": "lib/Cro/WebSocket/Message.pm6",
-        "Cro::WebSocket::Message::Opcode": "lib/Cro/WebSocket/Message/Opcode.pm6",
-        "Cro::WebSocket::MessageParser": "lib/Cro/WebSocket/MessageParser.pm6",
-        "Cro::WebSocket::MessageSerializer": "lib/Cro/WebSocket/MessageSerializer.pm6"
-    },
-    "resources": [],
-    "source-url"    : "https://github.com/croservices/cro-websocket.git"
+  "name": "Cro::WebSocket",
+  "description": "WebSocket client, and WebSocket support in the Cro HTTP router.",
+  "version": "0.8.3",
+  "perl": "6.*",
+  "authors": [
+    "Jonathan Worthington <jnthn@jnthn.net>"
+  ],
+  "depends": [
+    "Cro::HTTP",
+    "Base64",
+    "Digest::SHA1::Native",
+    "Crypt::Random",
+    "JSON::Fast",
+    "OO::Monitors"
+  ],
+  "provides": {
+    "Cro::HTTP::Router::WebSocket": "lib/Cro/HTTP/Router/WebSocket.pm6",
+    "Cro::WebSocket::BodyParsers": "lib/Cro/WebSocket/BodyParsers.pm6",
+    "Cro::WebSocket::BodySerializers": "lib/Cro/WebSocket/BodySerializers.pm6",
+    "Cro::WebSocket::Client": "lib/Cro/WebSocket/Client.pm6",
+    "Cro::WebSocket::Client::Connection": "lib/Cro/WebSocket/Client/Connection.pm6",
+    "Cro::WebSocket::Frame": "lib/Cro/WebSocket/Frame.pm6",
+    "Cro::WebSocket::FrameParser": "lib/Cro/WebSocket/FrameParser.pm6",
+    "Cro::WebSocket::FrameSerializer": "lib/Cro/WebSocket/FrameSerializer.pm6",
+    "Cro::WebSocket::Handler": "lib/Cro/WebSocket/Handler.pm6",
+    "Cro::WebSocket::Internal": "lib/Cro/WebSocket/Internal.pm6",
+    "Cro::WebSocket::Message": "lib/Cro/WebSocket/Message.pm6",
+    "Cro::WebSocket::Message::Opcode": "lib/Cro/WebSocket/Message/Opcode.pm6",
+    "Cro::WebSocket::MessageParser": "lib/Cro/WebSocket/MessageParser.pm6",
+    "Cro::WebSocket::MessageSerializer": "lib/Cro/WebSocket/MessageSerializer.pm6"
+  },
+  "resources": [],
+  "license": "Artistic-2.0",
+  "tags": [
+    "WebSocket",
+    "Client",
+    "Server"
+  ],
+  "source-url": "https://github.com/croservices/cro-websocket.git"
 }
