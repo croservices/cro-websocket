@@ -48,7 +48,7 @@ my $app = route {
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
-my $https-server = Cro::HTTP::Server.new(port => 3006, application => $app, tls => %key-cert);
+my $https-server = Cro::HTTP::Server.new(port => 3007, application => $app, tls => %key-cert);
 $http-server.start;
 $https-server.start;
 END { $http-server.stop };
@@ -179,11 +179,11 @@ END { $https-server.stop }
     my $conn = await Cro::WebSocket::Client.connect('ws://localhost:3005/json');
     ok $conn, 'ws schema is handled';
     $conn.close;
-    $conn = await Cro::WebSocket::Client.connect('wss://localhost:3006/json', :%ca);
+    $conn = await Cro::WebSocket::Client.connect('wss://localhost:3007/json', :%ca);
     ok $conn, 'wss schema is handled with %ca passed';
     $conn.close;
     dies-ok {
-        await Cro::WebSocket::Client.connect('wss://localhost:3006/json');
+        await Cro::WebSocket::Client.connect('wss://localhost:3007/json');
     }, 'wss schema fails without %ca argument passed';
 }
 
