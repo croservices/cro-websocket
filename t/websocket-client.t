@@ -172,6 +172,9 @@ END { $https-server.stop }
         is $body<added>, 42, 'Correct hash content (2)';
         is $body<updated>, 1000, 'Correct hash content (3)';
     }
+
+    dies-ok { $connection.send(-> {}) },
+            'If problem serializing to JSON, it dies';
 }
 
 # WS / WSS handling

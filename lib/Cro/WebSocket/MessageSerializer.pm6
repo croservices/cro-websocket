@@ -37,13 +37,25 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
                         $current = Nil;
                         set-current;
                     }
+                    QUIT {
+                        default {
+                            serialization-error($_);
+                        }
+                    }
                 }
                 CATCH {
                     default {
-                        with $current.serialization-outcome -> $so {
-                            $so.break($_);
-                        }
+                        serialization-error($_);
                     }
+                }
+            }
+
+            sub serialization-error(Exception $error --> Nil) {
+                if $first {
+                    .break($error) with $current.serialization-outcome;
+                    $first = True;
+                    $current = Nil;
+                    set-current;
                 }
             }
 
