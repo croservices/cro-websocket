@@ -65,7 +65,16 @@ class Cro::WebSocket::MessageSerializer does Cro::Transform {
                     emit Cro::WebSocket::Frame.new(fin => True,
                                                    opcode => Cro::WebSocket::Frame::Opcode($opcode.value),
                                                    payload => $m.body-blob.result);
-                } else {
+                    .keep(True) with $m.serialization-outcome;
+                    CATCH {
+                        default {
+                            with $m.serialization-outcome -> $so {
+                                $m.break($_);
+                            }
+                        }
+                    }
+                }
+                else {
                     @order.push: $m;
                     set-current;
                 }
