@@ -79,11 +79,12 @@ class Cro::WebSocket::Client::Connection {
                     $receiver.emit: $_;
                 } else {
                     when $_.opcode == Cro::WebSocket::Message::Ping {
-                        my $body-byte-stream = $_.body-byte-stream;
+                        my $body-byte-stream = .body-byte-stream;
                         my $m = Cro::WebSocket::Message.new(opcode => Cro::WebSocket::Message::Pong,
-                                                            fragmented => False,
-                                                            :$body-byte-stream);
-                        $!sender.emit: $m;
+                                :!fragmented, :$body-byte-stream);
+                        # Send pong asynchronously, to break dependency between
+                        # receiver and sender.
+                        start $!sender.emit($m);
                     }
                     when $_.opcode == Cro::WebSocket::Message::Pong {
                         $!pong.keep-all;

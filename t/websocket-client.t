@@ -42,6 +42,24 @@ my $app = route {
             }
         }
     }
+    get -> 'pingy-server' {
+        web-socket -> $incoming {
+            supply {
+                whenever $incoming { LAST done }
+                another(20);
+                sub another($n) {
+                    if $n {
+                        whenever Promise.in(0.01 * rand) {
+                            emit Cro::WebSocket::Message.new:
+                                    :opcode(Cro::WebSocket::Message::Opcode::Ping),
+                                    :body('ping'), :!fragmented;
+                            another($n - 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
     get -> 'plain' {
         content 'text/plain', 'Hello';
     }
@@ -104,6 +122,26 @@ END { $https-server.stop }
 
     $ping = $connection.ping(:0timeout);
     dies-ok { await $ping }, 'Timeout breaks ping promise';
+
+    $connection.close;
+}
+
+# Cover a hang when the server sent us pings.
+{
+    my $connection = Cro::WebSocket::Client.connect: 'http://localhost:3005/pingy-server';
+    await Promise.anyof($connection, Promise.in(5));
+    die "Connection timed out" unless $connection;
+    $connection .= result;
+
+    my $pinger = start {
+        for ^20 {
+            await $connection.ping();
+            sleep 0.01;
+        }
+    }
+    await Promise.anyof($pinger, Promise.in(10));
+    ok $pinger, "No lockup when server is pinging us while we're sending too";
+    $connection.close;
 }
 
 # Chat testing
