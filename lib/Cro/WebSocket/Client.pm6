@@ -7,6 +7,7 @@ use Cro::WebSocket::BodySerializers;
 use Cro::WebSocket::Client::Connection;
 use Crypt::Random;
 use Digest::SHA1::Native;
+use Cro::WebSocket::LogTimelineSchema;
 
 class X::Cro::WebSocket::Client::CannotUpgrade is Exception {
     has $.reason;
@@ -102,6 +103,7 @@ class Cro::WebSocket::Client {
                 # No extensions for now
                 # die unless $resp.header('Sec-WebSocket-Extensions') eq Nil;
                 # die unless $resp.header('Sec-WebSocket-Protocol') eq 'echo-protocol'; # XXX
+                Cro::WebSocket::LogTimelineSchema::Connected.log();
                 Cro::WebSocket::Client::Connection.new(
                     in => $resp.body-byte-stream, :$out,
                     |(%(:$!body-parsers, :$!body-serializers) with self)
