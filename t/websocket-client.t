@@ -155,8 +155,7 @@ END { $https-server.stop }
 
     my $p = Promise.new;
     $connection.messages.tap(-> $mess {
-                                    ok (await $mess.body-text).starts-with('You said:');
-                                    $p.keep;
+                                    $p.keep: await $mess.body-text
                                 });
 
     $connection.send('Hello');
@@ -166,7 +165,10 @@ END { $https-server.stop }
 
     await Promise.anyof($p, Promise.in(5));
 
-    unless $p.status ~~ Kept {
+    if $p.status ~~ Kept {
+        ok $p.result.starts-with('You said:'), "Got expected reply";
+    }
+    else {
         flunk "send does not work";
     }
 
