@@ -6,6 +6,7 @@ use Cro::WebSocket::Internal;
 use Cro::WebSocket::Message;
 use Cro::WebSocket::MessageParser;
 use Cro::WebSocket::MessageSerializer;
+use Cro::WebSocket::LogTimelineSchema;
 use OO::Monitors;
 
 class X::Cro::WebSocket::Client::Closed is Exception {
@@ -123,7 +124,9 @@ class Cro::WebSocket::Client::Connection {
     multi method send(Cro::WebSocket::Message $m --> Nil) {
         self!ensure-open('send');
         my $serialized = $m.serialization-outcome //= Promise.new;
-        $!sender.emit($m);
+        Cro::WebSocket::LogTimelineSchema::Sent.log: -> {
+            $!sender.emit($m);
+        }
         await $serialized;
     }
     multi method send($m) {

@@ -1,5 +1,6 @@
 use Cro::Transform;
 use Cro::WebSocket::Message;
+use Cro::WebSocket::LogTimelineSchema;
 
 class Cro::WebSocket::Handler does Cro::Transform {
     has &.block;
@@ -65,7 +66,9 @@ class Cro::WebSocket::Handler does Cro::Transform {
 
             whenever $block-result {
                 when Cro::WebSocket::Message {
-                    emit $_;
+                    Cro::WebSocket::LogTimelineSchema::Sent.log: -> {
+                        emit $_
+                    }
                     if .opcode == Cro::WebSocket::Message::Close {
                         $supplier.emit(CloseMessage);
                         $end = True;
@@ -73,7 +76,9 @@ class Cro::WebSocket::Handler does Cro::Transform {
                     }
                 }
                 default {
-                    emit Cro::WebSocket::Message.new($_)
+                    Cro::WebSocket::LogTimelineSchema::Sent.log: -> {
+                        emit Cro::WebSocket::Message.new($_)
+                    }
                 }
 
                 LAST {
