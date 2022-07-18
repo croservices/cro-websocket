@@ -2,6 +2,7 @@
   "name": "Cro::WebSocket",
   "description": "WebSocket client, and WebSocket support in the Cro HTTP router.",
   "version": "0.8.7",
+  "auth": "zef:cro",
   "perl": "6.*",
   "authors": [
     "Jonathan Worthington <jnthn@jnthn.net>"
