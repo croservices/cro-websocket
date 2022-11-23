@@ -7,10 +7,10 @@ use Cro::HTTP::Router::WebSocket;
 use JSON::Fast;
 use Test;
 
-constant %ca := { ca-file => 't/certs-and-keys/ca-crt.pem' };
+constant %ca := { ca-file => 'xt/certs-and-keys/ca-crt.pem' };
 constant %key-cert := {
-    private-key-file => 't/certs-and-keys/server-key.pem',
-    certificate-file => 't/certs-and-keys/server-crt.pem'
+    private-key-file => 'xt/certs-and-keys/server-key.pem',
+    certificate-file => 'xt/certs-and-keys/server-crt.pem'
 };
 
 my $app = route {
