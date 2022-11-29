@@ -45,10 +45,27 @@ class Cro::WebSocket::Client {
         @!headers = Cro::HTTP::Header.new(name => 'Upgrade', value => 'websocket'),
                     Cro::HTTP::Header.new(name => 'Connection', value => 'Upgrade'),
                     Cro::HTTP::Header.new(name => 'Sec-WebSocket-Version', value => '13');
-        without @headers.first(*.name.lc eq 'sec-websocket-protocol') {
-            @!headers.append(Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
+        my $seen-protocol-header = False;
+        for @headers {
+            my $header = do {
+                when Cro::HTTP::Header {
+                    $_
+                }
+                when Pair {
+                    Cro::HTTP::Header.new(name => .key, value => .value)
+                }
+                default {
+                    die "WebSocket client headers must be Cro::HTTP::Header or Pair objects, not {.^name}";
+                }
+            }
+            @!headers.push($header);
+            if $header.name.lc eq 'sec-websocket-protocol' {
+                $seen-protocol-header = True;
+            }
         }
-        @!headers.append(@headers);
+        unless $seen-protocol-header {
+            @!headers.push(Cro::HTTP::Header.new(name => 'Sec-WebSocket-Protocol', value => 'echo-protocol'));
+        }
     }
 
     method connect($uri = '', :%ca --> Promise) {

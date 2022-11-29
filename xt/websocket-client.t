@@ -63,6 +63,13 @@ my $app = route {
     get -> 'plain' {
         content 'text/plain', 'Hello';
     }
+    get -> 'headers', :$foo is header, :$bar is header {
+        web-socket -> $incoming {
+            supply {
+                emit("foo=$foo,bar=$bar");
+            }
+        }
+    }
 }
 
 my $http-server = Cro::HTTP::Server.new(port => 3005, application => $app);
@@ -178,6 +185,31 @@ END { $https-server.stop }
     ok $closed.status ~~ Kept, 'The connection is closed by close() call';
 
     dies-ok { $connection.send('Bar') }, 'Cannot send anything to closed channel by close() call';
+}
+
+# Can send custom headers
+{
+    my $client = Cro::WebSocket::Client.new:
+        headers => [
+            foo => 'potato',
+            Cro::HTTP::Header.new(name => 'bar', value => 'cabbage')
+        ];
+    my $connection = $client.connect: 'http://localhost:3005/headers';
+
+    await Promise.anyof($connection, Promise.in(5));
+    if $connection.status != Kept {
+        flunk 'Connection promise is not Kept';
+        if $connection.status == Broken {
+            diag $connection.cause;
+        }
+        bail-out;
+    } else {
+        $connection = $connection.result;
+    }
+
+    my $message = await $connection.messages.head;
+    is await($message.body-text), 'foo=potato,bar=cabbage',
+        'Headers correctly transmitted';
 }
 
 # Body parsers/serializers
