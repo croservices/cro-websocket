@@ -19,7 +19,6 @@ class Cro::WebSocket::FrameSerializer does Cro::Transform {
 
                 # Mask flag and payload length
                 my $payload-len = $frame.payload.elems;
-                my $pos;
                 if $payload-len < 126 {
                     $message[1] = ($!mask ?? 128 !! 0) + $payload-len;
                 }
