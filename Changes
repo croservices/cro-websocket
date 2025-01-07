@@ -1,0 +1,5 @@
+Revision history for Cro::WebSocket
+
+{{NEXT}}
+    - Change dependency management to allow individual Cro modules to be
+      updated individually.
