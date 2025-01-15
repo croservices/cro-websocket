@@ -3,3 +3,4 @@ Revision history for Cro::WebSocket
 {{NEXT}}
     - Change dependency management to allow individual Cro modules to be
       updated individually.
+    - Rename all `.pm6` files to `.rakumod` and `.t` files to `.rakutest`.
